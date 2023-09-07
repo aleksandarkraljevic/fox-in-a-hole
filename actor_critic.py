@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import matplotlib.pyplot as plt
 from torch.distributions import Categorical
+from fox_in_a_hole import Game, ClassicalGame
 
 class Actor(nn.Module):
 
@@ -42,20 +43,22 @@ class Critic(nn.Module):
 
         return value
 
-def run_episodes(env, actor, critic, actor_optimizer, critic_optimizer, bootstrap=True, baseline_subtraction=True,
+def run_episodes(state, actor, critic, actor_optimizer, critic_optimizer, bootstrap=True, baseline_subtraction=True,
                  n_episodes=1000, n_boot=1, gamma=0.99, entropy_reg_strength=0.01):
     # define the variables that are used for model evaluation at the end
     rewards_per_episode = []
     epsilon = np.finfo(np.float32).eps.item()  # smallest possible value that won't get rounded off
     for episode in range(n_episodes):
-        state = env.reset()
-        state = torch.from_numpy(state.flatten()).float().unsqueeze(0) # convert to tensor
         terminal = False
         episode_rewards = []
         episode_values = []
         episode_log_action_prob = []
         episode_entropies = []
-        env.render()
+        game.take_random_move()
+        new_state = game.state
+
+        ### continue coding from here, might need to move new_state later or something ###
+
         while not terminal:
             # get the policy probability distribution and value
             policy_probs = actor.forward(state)
@@ -149,33 +152,31 @@ def run_episodes(env, actor, critic, actor_optimizer, critic_optimizer, bootstra
 
 if __name__ == '__main__':
     # initialize the environment and create the neural network
-    rows = 7
-    columns = 7
-    speed = 1.0
-    max_steps = 250
-    max_misses = 10
-    observation_type = 'pixel'  # 'vector'
+    n_holes = 5
     seed = None
     gamma = 0.99
     learning_rate = 0.01
 
-    env = catch.Catch(rows=rows, columns=columns, speed=speed, max_steps=max_steps,
-                max_misses=max_misses, observation_type=observation_type, seed=seed)
-    state = env.reset()
-    n_input = len(state.flatten())
-    state = torch.from_numpy(state.flatten()).float().unsqueeze(0) # convert to tensor
-    n_actions = env.action_space.n
+    n_input = n_holes
+    n_actions = n_holes
+
+    game = ClassicalGame(hole_nr=n_holes)
+    game.initialize_state()
+    state = game.state
+
+    state = torch.FloatTensor(state) # convert to tensor
+
     actor = Actor(n_input=n_input, n_actions=n_actions)
     critic = Critic(n_input=n_input, n_actions=n_actions)
     actor_optimizer = optim.Adam(actor.parameters(), lr=learning_rate)
     critic_optimizer = optim.Adam(critic.parameters(), lr=learning_rate)
 
     # perform the algorithm
-    rewards_per_episode = run_episodes(env=env, actor=actor, critic=critic, actor_optimizer=actor_optimizer,
-                                       critic_optimizer=critic_optimizer, bootstrap=True, baseline_subtraction=True,
-                                       n_episodes=1000, n_boot=5, gamma=0.99, entropy_reg_strength=0.1)
+    rewards_per_episode = run_episodes(state=state, actor=actor, critic=critic, actor_optimizer=actor_optimizer,
+                                       critic_optimizer=critic_optimizer, bootstrap=False, baseline_subtraction=False,
+                                       n_episodes=10, n_boot=5, gamma=0.99, entropy_reg_strength=0.1)
 
     # temporary performance check
-    plt.figure()
-    plt.plot(range(len(rewards_per_episode)), rewards_per_episode)
-    plt.show()
+    #plt.figure()
+    #plt.plot(range(len(rewards_per_episode)), rewards_per_episode)
+    #plt.show()
