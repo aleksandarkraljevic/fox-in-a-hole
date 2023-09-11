@@ -54,8 +54,6 @@ def run_episodes(state, actor, critic, actor_optimizer, critic_optimizer, bootst
         episode_values = []
         episode_log_action_prob = []
         episode_entropies = []
-        game.take_random_move()
-        new_state = game.state
 
         ### continue coding from here, might need to move new_state later or something ###
 
@@ -80,6 +78,9 @@ def run_episodes(state, actor, critic, actor_optimizer, critic_optimizer, bootst
             episode_rewards.append(reward)
             state = next_state
             state = torch.from_numpy(state.flatten()).float().unsqueeze(0) # convert to tensor
+
+            game.take_random_move()
+            new_state = game.state
 
             # break out of the steps if a terminal criterion is reached
             if terminal:
