@@ -123,23 +123,22 @@ def main(base_model, target_network, num_episodes, initial_exploration, final_ex
         update_model(base_model=base_model, target_network=target_network)
         steps_TN = 0
 
-
-    ### continue work from here ###
-
-    observation, info = env.reset()
-
     for episode in tqdm(range(num_episodes)):
-        terminated, truncated = False, False
+        terminated = False
+
+        game.initialize_state()
 
         if exploration_strategy == 'anneal_epsilon_greedy':
             # annealing, done before the while loop because the first episode equals 0 so it returns the original epsilon back
             exploration_parameter = exponential_anneal(episode, initial_exploration, final_exploration, decay_constant)
             epsilon = exploration_parameter  # temporary while only using egreedy
 
-        while (not terminated) and (not truncated):
+        while not terminated:
             current_episode_length += 1
 
-            # env.render()  # uncomment after hyperparameter tuning
+            state = game.state
+
+            ### work from here, but kinda everywhere still ###
 
             # let the main model predict the Q values based on the observation of the environment state
             # these are Q(S_t)
@@ -148,7 +147,7 @@ def main(base_model, target_network, num_episodes, initial_exploration, final_ex
             # choose an action
             if exploration_strategy == 'anneal_epsilon_greedy':
                 if np.random.random() < epsilon:    # exploration
-                    action = np.random.randint(2)
+                    action = np.random.randint(5)
                 else:
                     action = np.argmax(predicted_q_values)  # exploitation: take action with highest associated Q value
             elif exploration_strategy == 'boltzmann':
@@ -173,7 +172,7 @@ def main(base_model, target_network, num_episodes, initial_exploration, final_ex
             # roll over
             observation = new_observation
 
-            if terminated or truncated:
+            if terminated:
                 episode_lengths.append(current_episode_length)
                 current_episode_length = 0
                 observation, info = env.reset()
