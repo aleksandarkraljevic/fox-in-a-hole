@@ -1,25 +1,24 @@
+import gym
 import numpy as np
+import pygame
 import tensorflow as tf
 from collections import deque
 from tqdm import tqdm
 import time
 import random
 
-from helper import *
 from fox_in_a_hole import *
+from helper import *
 
-update_freq_TN = 100
-gamma = 1
-
-def initialize_model(learning_rate):
+def initialize_model(n_holes, learning_rate):
     '''
     Build the model. It is a simple Neural Network consisting of 3 densely connected layers with Relu activation functions.
     The only argument is the learning rate.
     '''
     model = tf.keras.models.Sequential([
-      tf.keras.layers.Dense(64, activation='relu', input_shape=(4,), kernel_initializer=tf.keras.initializers.GlorotUniform()),
-      tf.keras.layers.Dense(128, activation='relu', kernel_initializer=tf.keras.initializers.GlorotUniform()),
-      tf.keras.layers.Dense(2, activation='linear', kernel_initializer=tf.keras.initializers.GlorotUniform())
+      tf.keras.layers.Dense(24, activation='relu', input_shape=(2*n_holes,), kernel_initializer=tf.keras.initializers.GlorotUniform()),
+      tf.keras.layers.Dense(48, activation='relu', kernel_initializer=tf.keras.initializers.GlorotUniform()),
+      tf.keras.layers.Dense(n_holes, activation='linear', kernel_initializer=tf.keras.initializers.GlorotUniform())
     ])
     model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
                   loss=tf.keras.losses.MeanSquaredError(),
@@ -39,7 +38,7 @@ def update_model(base_model, target_network):
 
 def train(base_model, target_network, replay_buffer, activate_ER, activate_TN, learning_rate):
     '''
-    Trains the model using the DQN algorithm.
+    Trains the model using the DQN algorithm. 
     The Replay Experience buffer (if enabled) is used to indicate which states we want to train the model on. 
     Otherwise, we use the last state observed in the list.
     Then, it predicts the new Q-values with the use of the Target Network (if enabled).
@@ -55,14 +54,14 @@ def train(base_model, target_network, replay_buffer, activate_ER, activate_TN, l
     terminated, truncated = replay_buffer[last_element][4], replay_buffer[last_element][5]
 
     if not activate_ER:                    # for the baseline: just take the last element
-        sample_list = [last_element]
+        sample_list = [last_element]    
     else:                                  # for the ER: check the conditions and then take a sample
         min_size_buffer = 1_000
         batch_size = 128
 
         if len(replay_buffer) < min_size_buffer:
             return
-
+        
         sample_list = random.sample(range(0, len(replay_buffer)), batch_size)
 
     observation_list = list()
@@ -93,14 +92,14 @@ def train(base_model, target_network, replay_buffer, activate_ER, activate_TN, l
             q_bellman = predicted_q_values[i] - learning_rate * (predicted_q_values[i] - reward_list[i])
         q_bellman[1-action_list[i]] = predicted_q_values[i][1-action_list[i]]
         q_bellman_list.append(q_bellman)
-
+    
     if activate_ER:
         base_model.fit(x=np.array(observation_list), y=np.array(q_bellman_list), batch_size=batch_size, verbose=0)
     else:
         base_model.fit(x=np.array(observation_list), y=np.array(q_bellman_list), verbose=0)
 
 
-def main(base_model, target_network, num_episodes, initial_exploration, final_exploration, learning_rate, decay_constant, temperature, activate_TN, activate_ER, exploration_strategy='anneal_epsilon_greedy'):
+def main(base_model, target_network, num_episodes, initial_exploration, final_exploration, learning_rate, decay_constant, temperature, activate_TN, activate_ER, exploration_strategy='anneal_epsilon_greedy', n_holes = 5):
     '''
     For all the episodes, the agent selects an action (based on the given policy) and then trains the model.
     Experience Replacy and Target Network are used if they were specified when this function was called.
@@ -112,8 +111,7 @@ def main(base_model, target_network, num_episodes, initial_exploration, final_ex
     param temperature:              key parameter of boltzmann's policy
     param exploration_strategy:     by default is set to 'anneal_epsilon_greedy' but 'boltzmann' is also a valid option     
     '''
-
-    game = ClassicalGame(hole_nr=5)
+    env = FoxInAHole(n_holes)
 
     episode_lengths = []
     replay_buffer = deque(maxlen=1000)
@@ -123,32 +121,28 @@ def main(base_model, target_network, num_episodes, initial_exploration, final_ex
         update_model(base_model=base_model, target_network=target_network)
         steps_TN = 0
 
-
-    ### continue work from here ###
-
-    observation, info = env.reset()
+    observation, fox = env.reset()
 
     for episode in tqdm(range(num_episodes)):
-        terminated, truncated = False, False
+        won, lost = False, False # won and lost represent whether the game has been won or lost yet
 
         if exploration_strategy == 'anneal_epsilon_greedy':
             # annealing, done before the while loop because the first episode equals 0 so it returns the original epsilon back
             exploration_parameter = exponential_anneal(episode, initial_exploration, final_exploration, decay_constant)
             epsilon = exploration_parameter  # temporary while only using egreedy
 
-        while (not terminated) and (not truncated):
+        while (not won) and (not lost):
             current_episode_length += 1
-
-            # env.render()  # uncomment after hyperparameter tuning
 
             # let the main model predict the Q values based on the observation of the environment state
             # these are Q(S_t)
-            predicted_q_values = base_model.predict(observation.reshape((1, 4)),verbose=0)
+
+            predicted_q_values = base_model.predict([observation],verbose=0)
 
             # choose an action
             if exploration_strategy == 'anneal_epsilon_greedy':
                 if np.random.random() < epsilon:    # exploration
-                    action = np.random.randint(2)
+                    action = np.random.randint(1, n_holes+1)
                 else:
                     action = np.argmax(predicted_q_values)  # exploitation: take action with highest associated Q value
             elif exploration_strategy == 'boltzmann':
@@ -160,7 +154,10 @@ def main(base_model, target_network, num_episodes, initial_exploration, final_ex
             # print(f'predicted Q values {predicted_q_values}')
             # print(f'Chosen action: {action}')
 
-            new_observation, reward, terminated, truncated, info = env.step(action)
+            ### TODO continue from here ###
+
+            # wrong still
+            new_observation, reward, terminated, truncated, info = env.step()
             replay_buffer.append([observation, action, reward, new_observation, terminated, truncated])
 
             if activate_TN:
@@ -190,7 +187,8 @@ def main(base_model, target_network, num_episodes, initial_exploration, final_ex
 
 
 if __name__ == '__main__':
-    ###########################################################################################################
+    # game parameters
+    n_holes = 5
     # Hyperparameters of the algorithm and other parameters of the program
     learning_rate = 0.01
     gamma = 1  # discount factor
@@ -201,16 +199,16 @@ if __name__ == '__main__':
     temperature = 0.1
     activate_ER = False
     activate_TN = False
-    exploration_strategy = 'boltzmann'
+    exploration_strategy = 'anneal_epsilon_greedy'
 
     start = time.time()
 
-    base_model = initialize_model(learning_rate=learning_rate)
-    target_network = initialize_model(learning_rate=learning_rate)
+    base_model = initialize_model(n_holes=n_holes, learning_rate=learning_rate)
+    target_network = initialize_model(n_holes=n_holes, learning_rate=learning_rate)
     if activate_TN:
-        update_freq_TN = 100 
+        update_freq_TN = 10
 
-    episode_lengths = main(base_model=base_model, target_network=target_network, num_episodes=num_episodes, initial_exploration=initial_epsilon, final_exploration=final_epsilon, learning_rate=learning_rate, decay_constant=decay_constant, temperature=temperature, activate_TN=activate_TN, activate_ER=activate_ER, exploration_strategy='anneal_epsilon_greedy')
+    episode_lengths = main(base_model=base_model, target_network=target_network, num_episodes=num_episodes, initial_exploration=initial_epsilon, final_exploration=final_epsilon, learning_rate=learning_rate, decay_constant=decay_constant, temperature=temperature, activate_TN=activate_TN, activate_ER=activate_ER, exploration_strategy='anneal_epsilon_greedy', n_holes=n_holes)
     print('episode lengths = ', episode_lengths)
 
     end = time.time()
