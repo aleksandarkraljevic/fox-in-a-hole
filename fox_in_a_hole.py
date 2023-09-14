@@ -30,12 +30,12 @@ class FoxInAHole():
         # perform one guess in the game logic
         if timestep <= len(self.observation):
             self.observation[timestep-1] = action
-            if timestep == len(self.observation):
-                self.done = [False, True] # the game is lost if the fox hasn't been found after 2*n_holes timesteps
             if action == self.fox:
                 self.done = [True, False] # the game is won when the fox is found
-            else:
-                self.reward -= 1
+                self.reward += 1
+            elif timestep == len(self.observation):
+                self.done = [False, True] # the game is lost if the fox hasn't been found after 2*n_holes timesteps
+            self.reward -= 1
         else:
             print('Timestep is too large for the memory size.')
         return self.observation, self.reward, self.done

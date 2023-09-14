@@ -36,7 +36,7 @@ def update_model(base_model, target_network):
         layer_TN.set_weights(layer_BM.get_weights())
 
 
-def train(base_model, target_network, replay_buffer, activate_ER, activate_TN, learning_rate):
+def train(base_model, target_network, replay_buffer, activate_ER, activate_TN, learning_rate, n_holes = 5):
     '''
     Trains the model using the DQN algorithm. 
     The Replay Experience buffer (if enabled) is used to indicate which states we want to train the model on. 
@@ -51,7 +51,7 @@ def train(base_model, target_network, replay_buffer, activate_ER, activate_TN, l
     param learning_rate:    learning rate hyperparameter
     '''
     last_element = -1 # index for the last element of the buffer for if we update without batches
-    terminated, truncated = replay_buffer[last_element][4], replay_buffer[last_element][5]
+    won, lost = replay_buffer[last_element][4], replay_buffer[last_element][5]
 
     if not activate_ER:                    # for the baseline: just take the last element
         sample_list = [last_element]    
@@ -68,15 +68,15 @@ def train(base_model, target_network, replay_buffer, activate_ER, activate_TN, l
     new_observation_list = list()
     action_list = list()
     reward_list = list()
-    terminated_list = list()
-    truncated_list = list()
+    won_list = list()
+    lost_list = list()
     for element in sample_list:
         observation_list.append(replay_buffer[element][0])
         new_observation_list.append(replay_buffer[element][3])
         action_list.append(replay_buffer[element][1])
         reward_list.append(replay_buffer[element][2])
-        terminated_list.append(replay_buffer[element][4])
-        truncated_list.append(replay_buffer[element][5])
+        won_list.append(replay_buffer[element][4])
+        lost_list.append(replay_buffer[element][5])
 
     predicted_q_values = base_model.predict(np.array(observation_list),verbose=0)
     if activate_TN:
@@ -86,11 +86,15 @@ def train(base_model, target_network, replay_buffer, activate_ER, activate_TN, l
 
     q_bellman_list = list()
     for i in range(len(observation_list)):
-        if (not terminated_list[i]) and (not truncated_list[i]):
+        if (not won_list[i]) and (not lost_list[i]):
             q_bellman = predicted_q_values[i] - learning_rate * (predicted_q_values[i] - reward_list[i] - gamma * max(new_predicted_q_values[i]))
         else:
             q_bellman = predicted_q_values[i] - learning_rate * (predicted_q_values[i] - reward_list[i])
-        q_bellman[1-action_list[i]] = predicted_q_values[i][1-action_list[i]]
+        # here we have to replace the q values of the actions that we didn't choose to take back with their previous values, such that only the taken state-action is updated
+        possible_actions = list(range(n_holes))
+        possible_actions.pop(action_list[i]-1)
+        for j in possible_actions:
+            q_bellman[j] = predicted_q_values[i][j]
         q_bellman_list.append(q_bellman)
     
     if activate_ER:
@@ -136,7 +140,6 @@ def main(base_model, target_network, num_episodes, initial_exploration, final_ex
 
             # let the main model predict the Q values based on the observation of the environment state
             # these are Q(S_t)
-
             predicted_q_values = base_model.predict([observation],verbose=0)
 
             # choose an action
@@ -144,36 +147,35 @@ def main(base_model, target_network, num_episodes, initial_exploration, final_ex
                 if np.random.random() < epsilon:    # exploration
                     action = np.random.randint(1, n_holes+1)
                 else:
-                    action = np.argmax(predicted_q_values)  # exploitation: take action with highest associated Q value
+                    action = np.argmax(predicted_q_values) + 1  # exploitation: take action with highest associated Q value
             elif exploration_strategy == 'boltzmann':
                 probabilities = np.cumsum(boltzmann_exploration(predicted_q_values, temperature))
                 random_number = np.random.random()
-                action = np.argmax(random_number < probabilities)  # numpy argmax takes first True value
+                action = np.argmax(random_number < probabilities) + 1  # numpy argmax takes first True value
 
             # for testing:
-            # print(f'predicted Q values {predicted_q_values}')
-            # print(f'Chosen action: {action}')
+            #print(f'predicted Q values {predicted_q_values}')
+            #print(f'Chosen action: {action}')
 
-            ### TODO continue from here ###
-
-            # wrong still
-            new_observation, reward, terminated, truncated, info = env.step()
-            replay_buffer.append([observation, action, reward, new_observation, terminated, truncated])
+            new_observation, reward, done = env.guess(action, current_episode_length)
+            won, lost = done
+            print(observation) ##########
+            replay_buffer.append([observation, action, reward, new_observation, won, lost])
 
             if activate_TN:
                 steps_TN += 1
-                if current_episode_length % 4 == 0 or truncated or terminated:
-                    train(base_model=base_model, target_network=target_network, replay_buffer=replay_buffer, activate_ER=activate_ER, activate_TN=activate_TN, learning_rate=learning_rate)
+                if current_episode_length % 4 == 0 or won or lost:
+                    train(base_model=base_model, target_network=target_network, replay_buffer=replay_buffer, activate_ER=activate_ER, activate_TN=activate_TN, learning_rate=learning_rate, n_holes=n_holes)
             else:
-                train(base_model=base_model, target_network=target_network, replay_buffer=replay_buffer, activate_ER=activate_ER, activate_TN=activate_TN, learning_rate=learning_rate)
+                train(base_model=base_model, target_network=target_network, replay_buffer=replay_buffer, activate_ER=activate_ER, activate_TN=activate_TN, learning_rate=learning_rate, n_holes=n_holes)
 
             # roll over
             observation = new_observation
 
-            if terminated or truncated:
+            if won or lost:
                 episode_lengths.append(current_episode_length)
                 current_episode_length = 0
-                observation, info = env.reset()
+                observation, fox = env.reset()
 
                 if activate_TN:
                     if steps_TN >= update_freq_TN:
@@ -181,7 +183,7 @@ def main(base_model, target_network, num_episodes, initial_exploration, final_ex
                         steps_TN = 0
                 break
 
-    env.close()
+            fox = env.step()
 
     return episode_lengths
 
