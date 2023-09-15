@@ -1,11 +1,10 @@
-import gym
 import numpy as np
-import pygame
 import tensorflow as tf
 from collections import deque
 from tqdm import tqdm
 import time
 import random
+import matplotlib.pyplot as plt
 
 from fox_in_a_hole import *
 from helper import *
@@ -56,7 +55,7 @@ def train(base_model, target_network, replay_buffer, activate_ER, activate_TN, l
     if not activate_ER:                    # for the baseline: just take the last element
         sample_list = [last_element]    
     else:                                  # for the ER: check the conditions and then take a sample
-        min_size_buffer = 1_000
+        min_size_buffer = 1000
         batch_size = 128
 
         if len(replay_buffer) < min_size_buffer:
@@ -78,11 +77,11 @@ def train(base_model, target_network, replay_buffer, activate_ER, activate_TN, l
         won_list.append(replay_buffer[element][4])
         lost_list.append(replay_buffer[element][5])
 
-    predicted_q_values = base_model.predict(np.array(observation_list),verbose=0)
+    predicted_q_values = base_model.predict(np.asarray(observation_list),verbose=0)
     if activate_TN:
-        new_predicted_q_values = target_network.predict(np.array(new_observation_list),verbose=0)
+        new_predicted_q_values = target_network.predict(np.asarray(new_observation_list),verbose=0)
     else:
-        new_predicted_q_values = base_model.predict(np.array(new_observation_list),verbose=0)
+        new_predicted_q_values = base_model.predict(np.asarray(new_observation_list),verbose=0)
 
     q_bellman_list = list()
     for i in range(len(observation_list)):
@@ -98,9 +97,9 @@ def train(base_model, target_network, replay_buffer, activate_ER, activate_TN, l
         q_bellman_list.append(q_bellman)
     
     if activate_ER:
-        base_model.fit(x=np.array(observation_list), y=np.array(q_bellman_list), batch_size=batch_size, verbose=0)
+        base_model.fit(x=np.asarray(observation_list), y=np.asarray(q_bellman_list), batch_size=batch_size, verbose=0)
     else:
-        base_model.fit(x=np.array(observation_list), y=np.array(q_bellman_list), verbose=0)
+        base_model.fit(x=np.asarray(observation_list), y=np.asarray(q_bellman_list), verbose=0)
 
 
 def main(base_model, target_network, num_episodes, initial_exploration, final_exploration, learning_rate, decay_constant, temperature, activate_TN, activate_ER, exploration_strategy='anneal_epsilon_greedy', n_holes = 5):
@@ -115,20 +114,21 @@ def main(base_model, target_network, num_episodes, initial_exploration, final_ex
     param temperature:              key parameter of boltzmann's policy
     param exploration_strategy:     by default is set to 'anneal_epsilon_greedy' but 'boltzmann' is also a valid option     
     '''
-    env = FoxInAHole(n_holes)
+    env = FoxInAHole(n_holes, 2*n_holes)
 
     episode_lengths = []
-    replay_buffer = deque(maxlen=1000)
+    replay_buffer = deque(maxlen=50000)
     current_episode_length = 0
+    observation = [0] * (2 * n_holes) # The memory of actions that have been taken is the observation
 
     if activate_TN:     # start by copying over the weights from TN to base model to ensure they are identical
         update_model(base_model=base_model, target_network=target_network)
         steps_TN = 0
 
-    observation, fox = env.reset()
+    fox, done = env.reset()
 
     for episode in tqdm(range(num_episodes)):
-        won, lost = False, False # won and lost represent whether the game has been won or lost yet
+        won, lost = done # won and lost represent whether the game has been won or lost yet
 
         if exploration_strategy == 'anneal_epsilon_greedy':
             # annealing, done before the while loop because the first episode equals 0 so it returns the original epsilon back
@@ -140,7 +140,7 @@ def main(base_model, target_network, num_episodes, initial_exploration, final_ex
 
             # let the main model predict the Q values based on the observation of the environment state
             # these are Q(S_t)
-            predicted_q_values = base_model.predict([observation],verbose=0)
+            predicted_q_values = base_model.predict(np.asarray(observation).reshape(1,2*n_holes),verbose=0)
 
             # choose an action
             if exploration_strategy == 'anneal_epsilon_greedy':
@@ -157,14 +157,15 @@ def main(base_model, target_network, num_episodes, initial_exploration, final_ex
             #print(f'predicted Q values {predicted_q_values}')
             #print(f'Chosen action: {action}')
 
-            new_observation, reward, done = env.guess(action, current_episode_length)
+            reward, done = env.guess(action, current_episode_length)
             won, lost = done
-            print(observation) ##########
+            new_observation = observation.copy()
+            new_observation[current_episode_length-1] = action
             replay_buffer.append([observation, action, reward, new_observation, won, lost])
 
             if activate_TN:
                 steps_TN += 1
-                if current_episode_length % 4 == 0 or won or lost:
+                if current_episode_length % 4 == 0 or won or lost: # every 4 steps or at the end of an episode the game is trained
                     train(base_model=base_model, target_network=target_network, replay_buffer=replay_buffer, activate_ER=activate_ER, activate_TN=activate_TN, learning_rate=learning_rate, n_holes=n_holes)
             else:
                 train(base_model=base_model, target_network=target_network, replay_buffer=replay_buffer, activate_ER=activate_ER, activate_TN=activate_TN, learning_rate=learning_rate, n_holes=n_holes)
@@ -175,11 +176,12 @@ def main(base_model, target_network, num_episodes, initial_exploration, final_ex
             if won or lost:
                 episode_lengths.append(current_episode_length)
                 current_episode_length = 0
-                observation, fox = env.reset()
+                fox, done = env.reset()
+                observation = [0] * (2 * n_holes)
 
                 if activate_TN:
                     if steps_TN >= update_freq_TN:
-                        update_model(base_model=base_model, target_network=target_network)  # copy over the weights
+                        update_model(base_model=base_model, target_network=target_network)  # copy over the weights only after a certain amount of steps have been taken
                         steps_TN = 0
                 break
 
@@ -196,11 +198,11 @@ if __name__ == '__main__':
     gamma = 1  # discount factor
     initial_epsilon = 1  # 100%
     final_epsilon = 0.01  # 1%
-    num_episodes = 10
+    num_episodes = 300
     decay_constant = 0.1  # the amount with which the exploration parameter changes after each episode
     temperature = 0.1
-    activate_ER = False
-    activate_TN = False
+    activate_ER = True
+    activate_TN = True
     exploration_strategy = 'anneal_epsilon_greedy'
 
     start = time.time()
@@ -214,4 +216,9 @@ if __name__ == '__main__':
     print('episode lengths = ', episode_lengths)
 
     end = time.time()
-    print('Total time: {} seconds (number of episodes: {})'.format(end-start, num_episodes))
+    print('Total time: {} seconds (number of episodes: {})'.format(round(end - start, 1), num_episodes))
+
+    target_network.save('test.keras')
+    test_performance('test.keras',1000,n_holes,False)
+    episodes = np.arange(1,num_episodes+1)
+    #plot(episodes, episode_lengths, True, 'test')
