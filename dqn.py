@@ -218,7 +218,6 @@ if __name__ == '__main__':
     end = time.time()
     print('Total time: {} seconds (number of episodes: {})'.format(round(end - start, 1), num_episodes))
 
-    target_network.save('test.keras')
-    test_performance('test.keras',1000,n_holes,False)
+    target_network.save('test'+str(n_holes)+'.keras')
     episodes = np.arange(1,num_episodes+1)
-    #plot(episodes, episode_lengths, True, 'test')
+    plot(episodes=episodes, episode_lengths=episode_lengths, show=True, savename='test')
