@@ -9,13 +9,13 @@ import matplotlib.pyplot as plt
 from fox_in_a_hole import *
 from helper import *
 
-def initialize_model(n_holes, learning_rate):
+def initialize_model(n_holes, memory_size, learning_rate):
     '''
     Build the model. It is a simple Neural Network consisting of 3 densely connected layers with Relu activation functions.
     The only argument is the learning rate.
     '''
     model = tf.keras.models.Sequential([
-      tf.keras.layers.Dense(24, activation='relu', input_shape=(2*n_holes,), kernel_initializer=tf.keras.initializers.GlorotUniform()),
+      tf.keras.layers.Dense(24, activation='relu', input_shape=(memory_size,), kernel_initializer=tf.keras.initializers.GlorotUniform()),
       tf.keras.layers.Dense(48, activation='relu', kernel_initializer=tf.keras.initializers.GlorotUniform()),
       tf.keras.layers.Dense(n_holes, activation='linear', kernel_initializer=tf.keras.initializers.GlorotUniform())
     ])
@@ -55,8 +55,8 @@ def train(base_model, target_network, replay_buffer, activate_ER, activate_TN, l
     if not activate_ER:                    # for the baseline: just take the last element
         sample_list = [last_element]    
     else:                                  # for the ER: check the conditions and then take a sample
-        min_size_buffer = 1000
-        batch_size = 128
+        min_size_buffer = 200
+        batch_size = 18
 
         if len(replay_buffer) < min_size_buffer:
             return
@@ -102,7 +102,7 @@ def train(base_model, target_network, replay_buffer, activate_ER, activate_TN, l
         base_model.fit(x=np.asarray(observation_list), y=np.asarray(q_bellman_list), verbose=0)
 
 
-def main(base_model, target_network, num_episodes, initial_exploration, final_exploration, learning_rate, decay_constant, temperature, activate_TN, activate_ER, exploration_strategy='anneal_epsilon_greedy', n_holes = 5):
+def main(memory_size, base_model, target_network, num_episodes, initial_exploration, final_exploration, learning_rate, decay_constant, temperature, activate_TN, activate_ER, exploration_strategy='anneal_epsilon_greedy', n_holes = 5):
     '''
     For all the episodes, the agent selects an action (based on the given policy) and then trains the model.
     Experience Replacy and Target Network are used if they were specified when this function was called.
@@ -114,12 +114,12 @@ def main(base_model, target_network, num_episodes, initial_exploration, final_ex
     param temperature:              key parameter of boltzmann's policy
     param exploration_strategy:     by default is set to 'anneal_epsilon_greedy' but 'boltzmann' is also a valid option     
     '''
-    env = FoxInAHole(n_holes, 2*n_holes)
+    env = FoxInAHole(n_holes, memory_size)
 
     episode_lengths = []
     replay_buffer = deque(maxlen=50000)
     current_episode_length = 0
-    observation = [0] * (2 * n_holes) # The memory of actions that have been taken is the observation
+    observation = [0] * memory_size # The memory of actions that have been taken is the observation
 
     if activate_TN:     # start by copying over the weights from TN to base model to ensure they are identical
         update_model(base_model=base_model, target_network=target_network)
@@ -140,7 +140,7 @@ def main(base_model, target_network, num_episodes, initial_exploration, final_ex
 
             # let the main model predict the Q values based on the observation of the environment state
             # these are Q(S_t)
-            predicted_q_values = base_model.predict(np.asarray(observation).reshape(1,2*n_holes),verbose=0)
+            predicted_q_values = base_model.predict(np.asarray(observation).reshape(1,memory_size),verbose=0)
 
             # choose an action
             if exploration_strategy == 'anneal_epsilon_greedy':
@@ -165,7 +165,7 @@ def main(base_model, target_network, num_episodes, initial_exploration, final_ex
 
             if activate_TN:
                 steps_TN += 1
-                if current_episode_length % 4 == 0 or won or lost: # every 4 steps or at the end of an episode the game is trained
+                if current_episode_length % 1 == 0 or won or lost: # the model is trained every single step
                     train(base_model=base_model, target_network=target_network, replay_buffer=replay_buffer, activate_ER=activate_ER, activate_TN=activate_TN, learning_rate=learning_rate, n_holes=n_holes)
             else:
                 train(base_model=base_model, target_network=target_network, replay_buffer=replay_buffer, activate_ER=activate_ER, activate_TN=activate_TN, learning_rate=learning_rate, n_holes=n_holes)
@@ -177,7 +177,7 @@ def main(base_model, target_network, num_episodes, initial_exploration, final_ex
                 episode_lengths.append(current_episode_length)
                 current_episode_length = 0
                 fox, done = env.reset()
-                observation = [0] * (2 * n_holes)
+                observation = [0] * memory_size
 
                 if activate_TN:
                     if steps_TN >= update_freq_TN:
@@ -193,12 +193,13 @@ def main(base_model, target_network, num_episodes, initial_exploration, final_ex
 if __name__ == '__main__':
     # game parameters
     n_holes = 5
+    memory_size = 2*(n_holes-2)
     # Hyperparameters of the algorithm and other parameters of the program
     learning_rate = 0.01
     gamma = 1  # discount factor
     initial_epsilon = 1  # 100%
     final_epsilon = 0.01  # 1%
-    num_episodes = 300
+    num_episodes = 1000
     decay_constant = 0.1  # the amount with which the exploration parameter changes after each episode
     temperature = 0.1
     activate_ER = True
@@ -207,17 +208,17 @@ if __name__ == '__main__':
 
     start = time.time()
 
-    base_model = initialize_model(n_holes=n_holes, learning_rate=learning_rate)
-    target_network = initialize_model(n_holes=n_holes, learning_rate=learning_rate)
+    base_model = initialize_model(n_holes=n_holes, memory_size=memory_size, learning_rate=learning_rate)
+    target_network = initialize_model(n_holes=n_holes, memory_size=memory_size, learning_rate=learning_rate)
     if activate_TN:
-        update_freq_TN = 10
+        update_freq_TN = memory_size
 
-    episode_lengths = main(base_model=base_model, target_network=target_network, num_episodes=num_episodes, initial_exploration=initial_epsilon, final_exploration=final_epsilon, learning_rate=learning_rate, decay_constant=decay_constant, temperature=temperature, activate_TN=activate_TN, activate_ER=activate_ER, exploration_strategy='anneal_epsilon_greedy', n_holes=n_holes)
-    print('episode lengths = ', episode_lengths)
+    episode_lengths = main(memory_size=memory_size, base_model=base_model, target_network=target_network, num_episodes=num_episodes, initial_exploration=initial_epsilon, final_exploration=final_epsilon, learning_rate=learning_rate, decay_constant=decay_constant, temperature=temperature, activate_TN=activate_TN, activate_ER=activate_ER, exploration_strategy='anneal_epsilon_greedy', n_holes=n_holes)
+    #print('episode lengths = ', episode_lengths)
 
     end = time.time()
     print('Total time: {} seconds (number of episodes: {})'.format(round(end - start, 1), num_episodes))
 
-    target_network.save('test'+str(n_holes)+'.keras')
+    target_network.save('h='+str(n_holes)+'-m='+str(memory_size)+'-e='+str(num_episodes)+'-ER='+str(activate_ER)+'-TN='+str(activate_TN)+'.keras')
     episodes = np.arange(1,num_episodes+1)
-    plot(episodes=episodes, episode_lengths=episode_lengths, show=True, savename='test')
+    plot(episodes=episodes, episode_lengths=episode_lengths, show=True, savename='h='+str(n_holes)+'-m='+str(memory_size)+'-e='+str(num_episodes)+'-ER='+str(activate_ER)+'-TN='+str(activate_TN))
