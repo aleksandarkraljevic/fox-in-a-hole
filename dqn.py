@@ -117,7 +117,7 @@ def main(memory_size, base_model, target_network, num_episodes, initial_explorat
     env = FoxInAHole(n_holes, memory_size)
 
     episode_lengths = []
-    replay_buffer = deque(maxlen=50000)
+    replay_buffer = deque(maxlen=1000)
     current_episode_length = 0
     observation = [0] * memory_size # The memory of actions that have been taken is the observation
 
@@ -172,28 +172,25 @@ def main(memory_size, base_model, target_network, num_episodes, initial_explorat
 
             # roll over
             observation = new_observation
-
-            if won or lost:
-                episode_lengths.append(current_episode_length)
-                current_episode_length = 0
-                fox, done = env.reset()
-                observation = [0] * memory_size
-
-                if activate_TN:
-                    if steps_TN >= update_freq_TN:
-                        update_model(base_model=base_model, target_network=target_network)  # copy over the weights only after a certain amount of steps have been taken
-                        steps_TN = 0
-                break
-
             fox = env.step()
+
+        episode_lengths.append(current_episode_length)
+        current_episode_length = 0
+        fox, done = env.reset()
+        observation = [0] * memory_size
+
+        if activate_TN:
+            if steps_TN >= update_freq_TN:
+                update_model(base_model=base_model, target_network=target_network)  # copy over the weights only after a certain amount of steps have been taken
+                steps_TN = 0
 
     return episode_lengths
 
 
 if __name__ == '__main__':
     # game parameters
-    n_holes = 5
-    memory_size = 2*(n_holes-2)
+    n_holes = 10
+    memory_size = 2*n_holes
     # Hyperparameters of the algorithm and other parameters of the program
     learning_rate = 0.01
     gamma = 1  # discount factor

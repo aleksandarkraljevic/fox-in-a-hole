@@ -30,13 +30,11 @@ def evaluate(model_name, n_samples, n_holes, memory_size, print_strategy):
             new_observation[current_episode_length - 1] = action
             observation = new_observation
             fox = env.step()
-            if won or lost:
-                episode_lengths.append(current_episode_length)
-                current_episode_length = 0
-                fox, done = env.reset()
-                won, lost = done
-                observation = [0] * memory_size
-                break
+        episode_lengths.append(current_episode_length)
+        current_episode_length = 0
+        fox, done = env.reset()
+        won, lost = done
+        observation = [0] * memory_size
     print('The average amount of guesses needed to finish the game is: ',np.mean(episode_lengths))
 
-evaluate(model_name='h=10-m=16-e=1000-ER=True-TN=True.keras',n_samples=1000,n_holes=5, memory_size=6,print_strategy=True)
+evaluate(model_name='h=10-m=20-e=1000-ER=True-TN=True.keras',n_samples=1000,n_holes=10, memory_size=20,print_strategy=True)
