@@ -30,8 +30,8 @@ class FoxInAHole():
         # perform one guess in the game logic
         if action == self.fox:
             self.done = [True, False] # the game is won when the fox is found
-            self.reward += 2
+            self.reward += 1
         elif timestep == self.memory_size:
             self.done = [False, True] # the game is lost if the fox hasn't been found after the max amount of timesteps
-        self.reward -= 1
+            self.reward -= 1
         return self.reward, self.done

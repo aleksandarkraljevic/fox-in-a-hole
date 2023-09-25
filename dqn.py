@@ -117,6 +117,7 @@ def main(memory_size, base_model, target_network, num_episodes, initial_explorat
     env = FoxInAHole(n_holes, memory_size)
 
     episode_lengths = []
+    rewards = []
     replay_buffer = deque(maxlen=1000)
     current_episode_length = 0
     observation = [0] * memory_size # The memory of actions that have been taken is the observation
@@ -175,6 +176,7 @@ def main(memory_size, base_model, target_network, num_episodes, initial_explorat
             fox = env.step()
 
         episode_lengths.append(current_episode_length)
+        rewards.append(reward)
         current_episode_length = 0
         fox, done = env.reset()
         observation = [0] * memory_size
@@ -184,19 +186,21 @@ def main(memory_size, base_model, target_network, num_episodes, initial_explorat
                 update_model(base_model=base_model, target_network=target_network)  # copy over the weights only after a certain amount of steps have been taken
                 steps_TN = 0
 
-    return episode_lengths
+    return episode_lengths, rewards
 
 
 if __name__ == '__main__':
+    # name that will be used to save both the model and all its data with
+    savename = 'test3'
     # game parameters
-    n_holes = 10
+    n_holes = 5
     memory_size = 2*n_holes
     # Hyperparameters of the algorithm and other parameters of the program
     learning_rate = 0.01
     gamma = 1  # discount factor
     initial_epsilon = 1  # 100%
     final_epsilon = 0.01  # 1%
-    num_episodes = 1000
+    num_episodes = 100
     decay_constant = 0.1  # the amount with which the exploration parameter changes after each episode
     temperature = 0.1
     activate_ER = True
@@ -210,12 +214,14 @@ if __name__ == '__main__':
     if activate_TN:
         update_freq_TN = memory_size
 
-    episode_lengths = main(memory_size=memory_size, base_model=base_model, target_network=target_network, num_episodes=num_episodes, initial_exploration=initial_epsilon, final_exploration=final_epsilon, learning_rate=learning_rate, decay_constant=decay_constant, temperature=temperature, activate_TN=activate_TN, activate_ER=activate_ER, exploration_strategy='anneal_epsilon_greedy', n_holes=n_holes)
+    episode_lengths, rewards = main(memory_size=memory_size, base_model=base_model, target_network=target_network, num_episodes=num_episodes, initial_exploration=initial_epsilon, final_exploration=final_epsilon, learning_rate=learning_rate, decay_constant=decay_constant, temperature=temperature, activate_TN=activate_TN, activate_ER=activate_ER, exploration_strategy='anneal_epsilon_greedy', n_holes=n_holes)
+    # For testing
     #print('episode lengths = ', episode_lengths)
+    #print('rewards = ', rewards)
 
     end = time.time()
     print('Total time: {} seconds (number of episodes: {})'.format(round(end - start, 1), num_episodes))
 
-    target_network.save('h='+str(n_holes)+'-m='+str(memory_size)+'-e='+str(num_episodes)+'-ER='+str(activate_ER)+'-TN='+str(activate_TN)+'.keras')
-    episodes = np.arange(1,num_episodes+1)
-    plot(episodes=episodes, episode_lengths=episode_lengths, show=True, savename='h='+str(n_holes)+'-m='+str(memory_size)+'-e='+str(num_episodes)+'-ER='+str(activate_ER)+'-TN='+str(activate_TN))
+    data = {'n_holes': n_holes, 'memory_size': memory_size, 'rewards': rewards, 'episode_lengths': episode_lengths, 'activate_ER': activate_ER, 'activate_TN': activate_TN}
+    np.save('data/'+savename+'.npy', data)
+    target_network.save('models/'+savename+'.keras')
