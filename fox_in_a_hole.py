@@ -4,7 +4,6 @@ class FoxInAHole():
     def __init__(self, n_holes, memory_size):
         self.n_holes = n_holes
         self.memory_size = memory_size
-        self.guarantee = 2*(self.n_holes-2)
 
     def reset(self):
         # reset the environment to initial state
@@ -31,10 +30,7 @@ class FoxInAHole():
         # perform one guess in the game logic
         if action == self.fox:
             self.done = [True, False] # the game is won when the fox is found
-            if  timestep <= self.guarantee:
-                self.reward += 1
-            else:
-                self.reward -= 1
+            self.reward += 1
         elif timestep == self.memory_size:
             self.done = [False, True] # the game is lost if the fox hasn't been found after the max amount of timesteps
             self.reward -= 1
