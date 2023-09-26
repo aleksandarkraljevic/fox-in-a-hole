@@ -1,6 +1,6 @@
-import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
+from scipy.signal import savgol_filter
 from fox_in_a_hole import *
 
 def exponential_anneal(t, start, final, decay_constant):
@@ -25,9 +25,11 @@ def boltzmann_exploration(actions, temperature):
     a = actions - max(actions)  # substract maximum to prevent overflow of softmax
     return np.exp(a)/np.sum(np.exp(a))
 
-def plot(data_name, show, savename):
+def plot(data_name, show, savename, smooth):
     data = np.load('data/'+data_name+'.npy', allow_pickle=True)
     rewards = data.item().get('rewards')
+    if smooth==True:
+        rewards = savgol_filter(rewards, 5, 1)
     episodes = np.arange(1, len(rewards) + 1)
     plt.figure()
     plt.plot(episodes, rewards)
@@ -39,7 +41,7 @@ def plot(data_name, show, savename):
     if show:
         plt.show()
 
-def plot_averaged(data_names, show, savename):
+def plot_averaged(data_names, show, savename, smooth):
     n_names = len(data_names)
     data = np.load('data/'+data_names[0]+'.npy', allow_pickle=True)
     rewards = np.asarray(data.item().get('rewards'))
@@ -49,10 +51,12 @@ def plot_averaged(data_names, show, savename):
         rewards = np.vstack((rewards, new_rewards))
     mean_rewards = np.mean(rewards, axis=0)
     std_rewards = np.std(rewards, axis=0)
+    if smooth==True:
+        mean_rewards = savgol_filter(mean_rewards, 51, 3)
     episodes = np.arange(1, len(mean_rewards) + 1)
     plt.figure()
     plt.plot(episodes, mean_rewards)
-    plt.fill_between(episodes, mean_rewards-std_rewards, mean_rewards+std_rewards)
+    plt.fill_between(episodes, mean_rewards-std_rewards, mean_rewards+std_rewards, color='gray', alpha=0.2)
     plt.xlabel('Episode')
     plt.ylabel('Reward')
     plt.title('Mean reward per episode')

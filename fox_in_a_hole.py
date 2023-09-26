@@ -14,10 +14,11 @@ class FoxInAHole():
 
     def step(self):
         # perform one step in the game logic
-        if self.fox == 1:
-            self.fox += 1
-        elif self.fox == self.n_holes:
-            self.fox -= 1
+        if self.fox == 1 or self.fox == self.n_holes:
+            if self.fox == 1:
+                self.fox = 2
+            else:
+                self.fox -= 1
         else:
             random_movement = np.random.random()
             if random_movement < 0.5:
@@ -33,5 +34,5 @@ class FoxInAHole():
             self.reward += 1
         elif timestep == self.memory_size:
             self.done = [False, True] # the game is lost if the fox hasn't been found after the max amount of timesteps
-            self.reward -= 1
+            self.reward -= 10
         return self.reward, self.done

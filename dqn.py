@@ -1,12 +1,8 @@
-import numpy as np
-import tensorflow as tf
 from collections import deque
 from tqdm import tqdm
 import time
 import random
-import matplotlib.pyplot as plt
 
-from fox_in_a_hole import *
 from helper import *
 
 def initialize_model(n_holes, memory_size, learning_rate):
@@ -16,7 +12,7 @@ def initialize_model(n_holes, memory_size, learning_rate):
     '''
     model = tf.keras.models.Sequential([
       tf.keras.layers.Dense(24, activation='relu', input_shape=(memory_size,), kernel_initializer=tf.keras.initializers.GlorotUniform()),
-      tf.keras.layers.Dense(48, activation='relu', kernel_initializer=tf.keras.initializers.GlorotUniform()),
+      tf.keras.layers.Dense(24, activation='relu', kernel_initializer=tf.keras.initializers.GlorotUniform()),
       tf.keras.layers.Dense(n_holes, activation='linear', kernel_initializer=tf.keras.initializers.GlorotUniform())
     ])
     model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
@@ -35,7 +31,7 @@ def update_model(base_model, target_network):
         layer_TN.set_weights(layer_BM.get_weights())
 
 
-def train(base_model, target_network, replay_buffer, activate_ER, activate_TN, learning_rate, n_holes = 5):
+def train(base_model, target_network, replay_buffer, activate_ER, activate_TN, learning_rate, gamma, n_holes = 5):
     '''
     Trains the model using the DQN algorithm. 
     The Replay Experience buffer (if enabled) is used to indicate which states we want to train the model on. 
@@ -55,7 +51,7 @@ def train(base_model, target_network, replay_buffer, activate_ER, activate_TN, l
     if not activate_ER:                    # for the baseline: just take the last element
         sample_list = [last_element]    
     else:                                  # for the ER: check the conditions and then take a sample
-        min_size_buffer = 200
+        min_size_buffer = 64
         batch_size = 18
 
         if len(replay_buffer) < min_size_buffer:
@@ -102,7 +98,7 @@ def train(base_model, target_network, replay_buffer, activate_ER, activate_TN, l
         base_model.fit(x=np.asarray(observation_list), y=np.asarray(q_bellman_list), verbose=0)
 
 
-def main(memory_size, base_model, target_network, num_episodes, initial_exploration, final_exploration, learning_rate, decay_constant, temperature, activate_TN, activate_ER, exploration_strategy='anneal_epsilon_greedy', n_holes = 5):
+def main(memory_size, base_model, target_network, num_episodes, gamma, initial_exploration, final_exploration, learning_rate, decay_constant, temperature, activate_TN, update_freq_TN, activate_ER, exploration_strategy='anneal_epsilon_greedy', n_holes = 5):
     '''
     For all the episodes, the agent selects an action (based on the given policy) and then trains the model.
     Experience Replacy and Target Network are used if they were specified when this function was called.
@@ -118,7 +114,7 @@ def main(memory_size, base_model, target_network, num_episodes, initial_explorat
 
     episode_lengths = []
     rewards = []
-    replay_buffer = deque(maxlen=1000)
+    replay_buffer = deque(maxlen=200)
     current_episode_length = 0
     observation = [0] * memory_size # The memory of actions that have been taken is the observation
 
@@ -166,10 +162,10 @@ def main(memory_size, base_model, target_network, num_episodes, initial_explorat
 
             if activate_TN:
                 steps_TN += 1
-                if current_episode_length % 1 == 0 or won or lost: # the model is trained every single step
-                    train(base_model=base_model, target_network=target_network, replay_buffer=replay_buffer, activate_ER=activate_ER, activate_TN=activate_TN, learning_rate=learning_rate, n_holes=n_holes)
+                if won or lost: # the model is trained after every game
+                    train(base_model=base_model, target_network=target_network, replay_buffer=replay_buffer, activate_ER=activate_ER, activate_TN=activate_TN, learning_rate=learning_rate, gamma=gamma, n_holes=n_holes)
             else:
-                train(base_model=base_model, target_network=target_network, replay_buffer=replay_buffer, activate_ER=activate_ER, activate_TN=activate_TN, learning_rate=learning_rate, n_holes=n_holes)
+                train(base_model=base_model, target_network=target_network, replay_buffer=replay_buffer, activate_ER=activate_ER, activate_TN=activate_TN, learning_rate=learning_rate, gamma=gamma, n_holes=n_holes)
 
             # roll over
             observation = new_observation
@@ -191,7 +187,7 @@ def main(memory_size, base_model, target_network, num_episodes, initial_explorat
 
 if __name__ == '__main__':
     # name that will be used to save both the model and all its data with
-    savename = 'test3'
+    savename = 'test2'
     # game parameters
     n_holes = 5
     memory_size = 2*n_holes
@@ -200,9 +196,10 @@ if __name__ == '__main__':
     gamma = 1  # discount factor
     initial_epsilon = 1  # 100%
     final_epsilon = 0.01  # 1%
-    num_episodes = 100
+    num_episodes = 1000
     decay_constant = 0.1  # the amount with which the exploration parameter changes after each episode
     temperature = 0.1
+    update_freq_TN = memory_size
     activate_ER = True
     activate_TN = True
     exploration_strategy = 'anneal_epsilon_greedy'
@@ -211,13 +208,8 @@ if __name__ == '__main__':
 
     base_model = initialize_model(n_holes=n_holes, memory_size=memory_size, learning_rate=learning_rate)
     target_network = initialize_model(n_holes=n_holes, memory_size=memory_size, learning_rate=learning_rate)
-    if activate_TN:
-        update_freq_TN = memory_size
 
-    episode_lengths, rewards = main(memory_size=memory_size, base_model=base_model, target_network=target_network, num_episodes=num_episodes, initial_exploration=initial_epsilon, final_exploration=final_epsilon, learning_rate=learning_rate, decay_constant=decay_constant, temperature=temperature, activate_TN=activate_TN, activate_ER=activate_ER, exploration_strategy='anneal_epsilon_greedy', n_holes=n_holes)
-    # For testing
-    #print('episode lengths = ', episode_lengths)
-    #print('rewards = ', rewards)
+    episode_lengths, rewards = main(memory_size=memory_size, base_model=base_model, target_network=target_network, num_episodes=num_episodes, gamma=gamma, initial_exploration=initial_epsilon, final_exploration=final_epsilon, learning_rate=learning_rate, decay_constant=decay_constant, temperature=temperature, activate_TN=activate_TN, update_freq_TN=update_freq_TN, activate_ER=activate_ER, exploration_strategy='anneal_epsilon_greedy', n_holes=n_holes)
 
     end = time.time()
     print('Total time: {} seconds (number of episodes: {})'.format(round(end - start, 1), num_episodes))
