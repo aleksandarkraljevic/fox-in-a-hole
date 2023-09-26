@@ -189,7 +189,7 @@ def main(memory_size, base_model, target_network, num_episodes, initial_explorat
 
 if __name__ == '__main__':
     # game parameters
-    n_holes = 10
+    n_holes = 5
     memory_size = 2*n_holes
     # Hyperparameters of the algorithm and other parameters of the program
     learning_rate = 0.01
