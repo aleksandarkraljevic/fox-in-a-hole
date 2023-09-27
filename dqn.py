@@ -122,7 +122,7 @@ def main(memory_size, base_model, target_network, num_episodes, gamma, initial_e
         update_model(base_model=base_model, target_network=target_network)
         steps_TN = 0
 
-    fox, done = env.reset()
+    done = env.reset()
 
     for episode in tqdm(range(num_episodes)):
         won, lost = done # won and lost represent whether the game has been won or lost yet
@@ -169,12 +169,12 @@ def main(memory_size, base_model, target_network, num_episodes, gamma, initial_e
 
             # roll over
             observation = new_observation
-            fox = env.step()
+            env.step()
 
         episode_lengths.append(current_episode_length)
         rewards.append(reward)
         current_episode_length = 0
-        fox, done = env.reset()
+        done = env.reset()
         observation = [0] * memory_size
 
         if activate_TN:
@@ -187,7 +187,7 @@ def main(memory_size, base_model, target_network, num_episodes, gamma, initial_e
 
 if __name__ == '__main__':
     # name that will be used to save both the model and all its data with
-    savename = 'test2'
+    savename = 'test'
     # game parameters
     n_holes = 5
     memory_size = 2*n_holes

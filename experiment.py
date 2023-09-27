@@ -4,12 +4,12 @@ from fox_in_a_hole import *
 # name that will be used to save both the model and all its data with
 savename = 'experiment'
 # amount of repetitions that will be averaged over for the experiment
-repetitions = 10
+repetitions = 5
 # game parameters
 n_holes = 5
 memory_size = 2*n_holes
 # Hyperparameters of the algorithm and other parameters of the program
-learning_rate = 0.01
+learning_rate = 0.1
 gamma = 1  # discount factor
 initial_epsilon = 1  # 100%
 final_epsilon = 0.01  # 1%
@@ -41,3 +41,4 @@ end = time.time()
 print('Total time: {} seconds'.format(round(end - start, 1)))
 
 plot_averaged(data_names=data_names, show=True, savename=savename, smooth=False)
+plot_averaged(data_names=data_names, show=True, savename='smoothed_'+savename, smooth=True)
