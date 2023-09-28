@@ -74,7 +74,7 @@ def evaluate(model_name, n_samples, print_strategy):
     memory_size = data.item().get('memory_size')
     env = FoxInAHole(n_holes, memory_size)
     observation = [0] * memory_size
-    fox, done = env.reset()
+    done = env.reset()
     won, lost = done
     current_episode_length = 0
     episode_lengths = []
@@ -100,7 +100,7 @@ def evaluate(model_name, n_samples, print_strategy):
         episode_lengths.append(current_episode_length)
         rewards.append(reward)
         current_episode_length = 0
-        fox, done = env.reset()
+        done = env.reset()
         won, lost = done
         observation = [0] * memory_size
     print('The average amount of guesses needed to finish the game is: ',np.mean(episode_lengths))
