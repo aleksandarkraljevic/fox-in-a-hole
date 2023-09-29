@@ -40,6 +40,12 @@ class DQN():
         np.save('data/' + self.savename + '.npy', data)
         self.target_network.save('models/' + self.savename + '.keras')
 
+    def custom_predict(self, observations, model, batch_size):
+        predicted_q_values = []
+        for observation in observations:
+            predicted_q_values.append(model(np.asarray(observation).reshape(1,self.memory_size)))
+        return np.reshape(predicted_q_values, (batch_size,self.n_holes))
+
     def train(self, replay_buffer):
         '''
         Trains the model using the DQN algorithm.
@@ -59,9 +65,10 @@ class DQN():
 
         if not self.activate_ER:                    # for the baseline: just take the last element
             sample_list = [last_element]
+            batch_size = 1
         else:                                  # for the ER: check the conditions and then take a sample
-            min_size_buffer = 64
-            batch_size = 18
+            min_size_buffer = 30
+            batch_size = 16
 
             if len(replay_buffer) < min_size_buffer:
                 return
@@ -82,11 +89,12 @@ class DQN():
             won_list.append(replay_buffer[element][4])
             lost_list.append(replay_buffer[element][5])
 
-        predicted_q_values = self.base_model.predict(np.asarray(observation_list),verbose=0)
+        predicted_q_values = self.custom_predict(observation_list, self.base_model, batch_size)
+
         if self.activate_TN:
-            new_predicted_q_values = self.target_network.predict(np.asarray(new_observation_list),verbose=0)
+            new_predicted_q_values = self.custom_predict(new_observation_list, self.target_network, batch_size)
         else:
-            new_predicted_q_values = self.base_model.predict(np.asarray(new_observation_list),verbose=0)
+            new_predicted_q_values = self.custom_predict(new_observation_list, self.base_model, batch_size)
 
         q_bellman_list = list()
         for i in range(len(observation_list)):
@@ -123,7 +131,7 @@ class DQN():
 
         episode_lengths = []
         rewards = []
-        replay_buffer = deque(maxlen=200)
+        replay_buffer = deque(maxlen=1500)
         current_episode_length = 0
         observation = [0] * self.memory_size # The memory of actions that have been taken is the observation
 
@@ -146,7 +154,7 @@ class DQN():
 
                 # let the main model predict the Q values based on the observation of the environment state
                 # these are Q(S_t)
-                predicted_q_values = self.base_model.predict(np.asarray(observation).reshape(1,self.memory_size),verbose=0)
+                predicted_q_values = self.base_model(np.asarray(observation).reshape(1,self.memory_size))
 
                 # choose an action
                 if self.exploration_strategy == 'anneal_epsilon_greedy':
@@ -190,8 +198,7 @@ class DQN():
         if self.savename != False:
             self.save_data(rewards, episode_lengths)
 
-
-if __name__ == '__main__':
+def main():
     # name that will be used to save both the model and all its data with
     savename = 'test'
     # game parameters
@@ -204,7 +211,7 @@ if __name__ == '__main__':
     gamma = 1  # discount factor
     initial_exploration = 1  # 100%
     final_exploration = 0.01  # 1%
-    num_episodes = 500
+    num_episodes = 1000
     decay_constant = 0.1  # the amount with which the exploration parameter changes after each episode
     temperature = 0.1
     activate_ER = True
@@ -224,3 +231,6 @@ if __name__ == '__main__':
     end = time.time()
 
     print('Total time: {} seconds (number of episodes: {})'.format(round(end - start, 1), num_episodes))
+
+if __name__ == '__main__':
+    main()
