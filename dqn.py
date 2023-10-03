@@ -67,8 +67,8 @@ class DQN():
             sample_list = [last_element]
             batch_size = 1
         else:                                  # for the ER: check the conditions and then take a sample
-            min_size_buffer = 30
-            batch_size = 16
+            min_size_buffer = 300
+            batch_size = 32
 
             if len(replay_buffer) < min_size_buffer:
                 return
@@ -131,7 +131,7 @@ class DQN():
 
         episode_lengths = []
         rewards = []
-        replay_buffer = deque(maxlen=1500)
+        replay_buffer = deque(maxlen=7500)
         current_episode_length = 0
         observation = [0] * self.memory_size # The memory of actions that have been taken is the observation
 
@@ -211,7 +211,7 @@ def main():
     gamma = 1  # discount factor
     initial_exploration = 1  # 100%
     final_exploration = 0.01  # 1%
-    num_episodes = 1000
+    num_episodes = 5000
     decay_constant = 0.1  # the amount with which the exploration parameter changes after each episode
     temperature = 0.1
     activate_ER = True

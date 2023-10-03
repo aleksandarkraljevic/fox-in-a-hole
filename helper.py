@@ -81,7 +81,7 @@ def evaluate(model_name, n_samples, print_strategy):
     rewards = []
     if print_strategy:
         for step in range(len(observation)):
-            predicted_q_values = model.predict(np.asarray(observation).reshape(1, memory_size), verbose=0)
+            predicted_q_values = model(np.asarray(observation).reshape(1, memory_size))
             action = np.argmax(predicted_q_values) + 1
             observation[step] = action
         print(observation)
@@ -89,14 +89,14 @@ def evaluate(model_name, n_samples, print_strategy):
     for sample in range(n_samples):
         while (not won) and (not lost):
             current_episode_length += 1
-            predicted_q_values = model.predict(np.asarray(observation).reshape(1, memory_size), verbose=0)
+            predicted_q_values = model(np.asarray(observation).reshape(1, memory_size))
             action = np.argmax(predicted_q_values) + 1
             reward, done = env.guess(action, current_episode_length)
             won, lost = done
             new_observation = observation.copy()
             new_observation[current_episode_length - 1] = action
             observation = new_observation
-            fox = env.step()
+            env.step()
         episode_lengths.append(current_episode_length)
         rewards.append(reward)
         current_episode_length = 0

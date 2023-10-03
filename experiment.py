@@ -10,16 +10,16 @@ memory_size = 2*n_holes
 # model parameters
 n_nodes = 24
 # Hyperparameters of the algorithm and other parameters of the program
-learning_rate = 0.01
+learning_rate = 0.1
 gamma = 1  # discount factor
 initial_exploration = 1  # 100%
 final_exploration = 0.01  # 1%
-num_episodes = 500
-decay_constant = 0.1  # the amount with which the exploration parameter changes after each episode
+num_episodes = 5000
+decay_constant = 0.01  # the amount with which the exploration parameter changes after each episode
 temperature = 0.1
 activate_ER = True
 activate_TN = True
-exploration_strategy = 'anneal_epsilon_greedy'
+exploration_strategy = 'boltzmann'
 
 data_names = []
 
@@ -45,4 +45,4 @@ end = time.time()
 print('Total time: {} seconds'.format(round(end - start, 1)))
 
 plot_averaged(data_names=data_names, show=True, savename=savename, smooth=False)
-plot_averaged(data_names=data_names, show=True, savename='smoothed_'+savename, smooth=True)
+plot_averaged(data_names=data_names, show=True, savename=savename+'_smooth', smooth=True)
