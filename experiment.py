@@ -10,13 +10,13 @@ memory_size = 2*n_holes
 # model parameters
 n_nodes = 24
 # Hyperparameters of the algorithm and other parameters of the program
-learning_rate = 0.1
+learning_rate = 0.01
 gamma = 1  # discount factor
 initial_exploration = 1  # 100%
 final_exploration = 0.01  # 1%
 num_episodes = 5000
 decay_constant = 0.01  # the amount with which the exploration parameter changes after each episode
-temperature = 0.1
+temperature = 1
 activate_ER = True
 activate_TN = True
 exploration_strategy = 'boltzmann'
