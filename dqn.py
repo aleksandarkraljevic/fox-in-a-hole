@@ -8,7 +8,7 @@ from classic_NN import *
 
 
 class DQN():
-    def __init__(self, savename, base_model, target_network, n_holes, memory_size, learning_rate, gamma, activate_TN, activate_ER, num_episodes, initial_exploration, final_exploration, decay_constant, temperature, exploration_strategy):
+    def __init__(self, savename, base_model, target_network, n_holes, memory_size, learning_rate, gamma, num_episodes, tau, initial_exploration, final_exploration, decay_constant, temperature, exploration_strategy):
         self.savename = savename
         self.n_holes = n_holes
         self.memory_size = memory_size
@@ -16,9 +16,8 @@ class DQN():
         self.base_model = base_model
         self.target_network = target_network
         self.gamma = gamma
-        self.activate_TN = activate_TN
-        self.activate_ER = activate_ER
         self.num_episodes = num_episodes
+        self.tau = tau
         self.initial_exploration = initial_exploration
         self.final_exploration = final_exploration
         self.decay_constant = decay_constant
@@ -27,16 +26,20 @@ class DQN():
 
     def update_model(self):
         '''
-        Copies weights from base model to target network.
+        Copies weights from base model to target network via a soft-update rule.
         param base_model:       tf base model
         param target_network:   tf target network
         '''
         for layer_TN, layer_BM in zip(self.target_network.layers, self.base_model.layers):
-            layer_TN.set_weights(layer_BM.get_weights())
+            TN_weights = layer_TN.get_weights()
+            BM_weights = layer_BM.get_weights()
+            new_weights = []
+            new_weights.append((1-self.tau) * TN_weights[0] + self.tau * BM_weights[0])
+            new_weights.append((1 - self.tau) * TN_weights[1] + self.tau * BM_weights[1])
+            layer_TN.set_weights(new_weights)
 
     def save_data(self, rewards, episode_lengths):
-        data = {'n_holes': self.n_holes, 'memory_size': self.memory_size, 'rewards': rewards, 'episode_lengths': episode_lengths,
-                'activate_ER': self.activate_ER, 'activate_TN': self.activate_TN}
+        data = {'n_holes': self.n_holes, 'memory_size': self.memory_size, 'rewards': rewards, 'episode_lengths': episode_lengths}
         np.save('data/' + self.savename + '.npy', data)
         self.target_network.save('models/' + self.savename + '.keras')
 
@@ -61,19 +64,9 @@ class DQN():
         param learning_rate:    learning rate hyperparameter
         '''
 
-        last_element = -1 # index for the last element of the buffer for if we update without batches
+        batch_size = 32
 
-        if not self.activate_ER:                    # for the baseline: just take the last element
-            sample_list = [last_element]
-            batch_size = 1
-        else:                                  # for the ER: check the conditions and then take a sample
-            min_size_buffer = 300
-            batch_size = 32
-
-            if len(replay_buffer) < min_size_buffer:
-                return
-
-            sample_list = random.sample(range(0, len(replay_buffer)), batch_size)
+        sample_list = random.sample(range(0, len(replay_buffer)), batch_size)
 
         observation_list = list()
         new_observation_list = list()
@@ -91,17 +84,14 @@ class DQN():
 
         predicted_q_values = self.custom_predict(observation_list, self.base_model, batch_size)
 
-        if self.activate_TN:
-            new_predicted_q_values = self.custom_predict(new_observation_list, self.target_network, batch_size)
-        else:
-            new_predicted_q_values = self.custom_predict(new_observation_list, self.base_model, batch_size)
+        new_predicted_q_values = self.custom_predict(new_observation_list, self.target_network, batch_size)
 
         q_bellman_list = list()
         for i in range(len(observation_list)):
             if (not won_list[i]) and (not lost_list[i]):
-                q_bellman = predicted_q_values[i] - self.learning_rate * (predicted_q_values[i] - reward_list[i] - self.gamma * max(new_predicted_q_values[i]))
+                q_bellman = predicted_q_values[i] + self.learning_rate * (reward_list[i] + self.gamma * max(new_predicted_q_values[i]) - predicted_q_values[i])
             else:
-                q_bellman = predicted_q_values[i] - self.learning_rate * (predicted_q_values[i] - reward_list[i])
+                q_bellman = predicted_q_values[i] + self.learning_rate * (reward_list[i] - predicted_q_values[i])
             # here we have to replace the q values of the actions that we didn't choose to take back with their previous values, such that only the taken state-action is updated
             possible_actions = list(range(self.n_holes))
             possible_actions.pop(action_list[i]-1)
@@ -109,10 +99,7 @@ class DQN():
                 q_bellman[j] = predicted_q_values[i][j]
             q_bellman_list.append(q_bellman)
 
-        if self.activate_ER:
-            self.base_model.fit(x=np.asarray(observation_list), y=np.asarray(q_bellman_list), batch_size=batch_size, verbose=0)
-        else:
-            self.base_model.fit(x=np.asarray(observation_list), y=np.asarray(q_bellman_list), verbose=0)
+        self.base_model.fit(x=np.asarray(observation_list), y=np.asarray(q_bellman_list), batch_size=batch_size, verbose=0)
 
     def main(self):
         '''
@@ -132,12 +119,11 @@ class DQN():
         episode_lengths = []
         rewards = []
         replay_buffer = deque(maxlen=7500)
+        min_size_buffer = 300
         current_episode_length = 0
         observation = [0] * self.memory_size # The memory of actions that have been taken is the observation
 
-        if self.activate_TN:     # start by copying over the weights from TN to base model to ensure they are identical
-            self.update_model()
-            steps_TN = 0
+        self.update_model() # start by copying over the weights from TN to base model to ensure they are identical
 
         done = env.reset()
 
@@ -173,12 +159,9 @@ class DQN():
                 new_observation[current_episode_length-1] = action
                 replay_buffer.append([observation, action, reward, new_observation, won, lost])
 
-                if self.activate_TN:
-                    steps_TN += 1
-                    if won or lost: # the model is trained after every game
-                        self.train(replay_buffer)
-                else:
+                if (won or lost) and (len(replay_buffer) > min_size_buffer): # the model is trained after every game, as long as the replay buffer is filled up enough
                     self.train(replay_buffer)
+                    self.update_model()  # copy over the weights only after a certain amount of training steps have been taken
 
                 # roll over
                 observation = new_observation
@@ -189,11 +172,6 @@ class DQN():
             current_episode_length = 0
             done = env.reset()
             observation = [0] * self.memory_size
-
-            if self.activate_TN:
-                if steps_TN >= self.memory_size:
-                    self.update_model()  # copy over the weights only after a certain amount of steps have been taken
-                    steps_TN = 0
 
         if self.savename != False:
             self.save_data(rewards, episode_lengths)
@@ -209,13 +187,12 @@ def main():
     # Hyperparameters of the algorithm and other parameters of the program
     learning_rate = 0.01
     gamma = 1  # discount factor
+    tau = 0.1 # TN soft-update speed parameter, tau is the ratio of the TN that gets copied over at each training step
     initial_exploration = 1  # 100%
     final_exploration = 0.01  # 1%
     num_episodes = 5000
     decay_constant = 0.1  # the amount with which the exploration parameter changes after each episode
     temperature = 0.1
-    activate_ER = True
-    activate_TN = True
     exploration_strategy = 'anneal_epsilon_greedy'
 
     start = time.time()
@@ -224,7 +201,7 @@ def main():
     base_model = classical_model.initialize_model()
     target_network = classical_model.initialize_model()
 
-    dqn = DQN(savename, base_model, target_network, n_holes, memory_size, learning_rate, gamma, activate_TN, activate_ER, num_episodes, initial_exploration, final_exploration, decay_constant, temperature, exploration_strategy)
+    dqn = DQN(savename, base_model, target_network, n_holes, memory_size, learning_rate, gamma, num_episodes, tau, initial_exploration, final_exploration, decay_constant, temperature, exploration_strategy)
 
     dqn.main()
 
