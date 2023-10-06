@@ -31,12 +31,15 @@ class DQN():
         param target_network:   tf target network
         '''
         for layer_TN, layer_BM in zip(self.target_network.layers, self.base_model.layers):
+            # soft update
             TN_weights = layer_TN.get_weights()
             BM_weights = layer_BM.get_weights()
             new_weights = []
             new_weights.append((1-self.tau) * TN_weights[0] + self.tau * BM_weights[0])
             new_weights.append((1 - self.tau) * TN_weights[1] + self.tau * BM_weights[1])
             layer_TN.set_weights(new_weights)
+            # hard update
+            # layer_TN.set_weights(layer_BM.get_weights())
 
     def save_data(self, rewards, episode_lengths):
         data = {'n_holes': self.n_holes, 'memory_size': self.memory_size, 'rewards': rewards, 'episode_lengths': episode_lengths}
@@ -93,9 +96,9 @@ class DQN():
             else:
                 q_bellman = predicted_q_values[i] + self.learning_rate * (reward_list[i] - predicted_q_values[i])
             # here we have to replace the q values of the actions that we didn't choose to take back with their previous values, such that only the taken state-action is updated
-            possible_actions = list(range(self.n_holes))
-            possible_actions.pop(action_list[i]-1)
-            for j in possible_actions:
+            possible_action_indices = list(range(self.n_holes))
+            possible_action_indices.pop(action_list[i]-1)
+            for j in possible_action_indices:
                 q_bellman[j] = predicted_q_values[i][j]
             q_bellman_list.append(q_bellman)
 
@@ -118,10 +121,13 @@ class DQN():
 
         episode_lengths = []
         rewards = []
-        replay_buffer = deque(maxlen=7500)
-        min_size_buffer = 300
+        replay_buffer = deque(maxlen=10000)
+        min_size_buffer = 1000
         current_episode_length = 0
+        total_steps = 0
         observation = [0] * self.memory_size # The memory of actions that have been taken is the observation
+        possible_actions = list(range(self.n_holes))
+        possible_actions = [x+1 for x in possible_actions]
 
         self.update_model() # start by copying over the weights from TN to base model to ensure they are identical
 
@@ -133,10 +139,10 @@ class DQN():
             if self.exploration_strategy == 'anneal_epsilon_greedy':
                 # annealing, done before the while loop because the first episode equals 0 so it returns the original epsilon back
                 exploration_parameter = exponential_anneal(episode, self.initial_exploration, self.final_exploration, self.decay_constant)
-                epsilon = exploration_parameter  # temporary while only using egreedy
 
             while (not won) and (not lost):
                 current_episode_length += 1
+                total_steps += 1
 
                 # let the main model predict the Q values based on the observation of the environment state
                 # these are Q(S_t)
@@ -144,14 +150,13 @@ class DQN():
 
                 # choose an action
                 if self.exploration_strategy == 'anneal_epsilon_greedy':
-                    if np.random.random() < epsilon:    # exploration
+                    if np.random.random() < exploration_parameter:    # exploration
                         action = np.random.randint(1, self.n_holes+1)
                     else:
                         action = np.argmax(predicted_q_values) + 1  # exploitation: take action with highest associated Q value
                 elif self.exploration_strategy == 'boltzmann':
-                    probabilities = np.cumsum(boltzmann_exploration(predicted_q_values, self.temperature))
-                    random_number = np.random.random()
-                    action = np.argmax(random_number < probabilities) + 1  # numpy argmax takes first True value
+                    probabilities = boltzmann_exploration(predicted_q_values, self.temperature)
+                    action = np.random.choice(possible_actions, p=probabilities)
 
                 reward, done = env.guess(action, current_episode_length)
                 won, lost = done
@@ -159,7 +164,7 @@ class DQN():
                 new_observation[current_episode_length-1] = action
                 replay_buffer.append([observation, action, reward, new_observation, won, lost])
 
-                if (won or lost) and (len(replay_buffer) > min_size_buffer): # the model is trained after every game, as long as the replay buffer is filled up enough
+                if (total_steps % 10 == 0) and (len(replay_buffer) > min_size_buffer): # the model is trained after every game, as long as the replay buffer is filled up enough
                     self.train(replay_buffer)
                     self.update_model()  # copy over the weights only after a certain amount of training steps have been taken
 
@@ -183,17 +188,18 @@ def main():
     n_holes = 5
     memory_size = 2*n_holes
     # model parameters
-    n_nodes = 24
+    n_nodes = 12
     # Hyperparameters of the algorithm and other parameters of the program
     learning_rate = 0.01
     gamma = 1  # discount factor
     tau = 0.1 # TN soft-update speed parameter, tau is the ratio of the TN that gets copied over at each training step
     initial_exploration = 1  # 100%
     final_exploration = 0.01  # 1%
-    num_episodes = 5000
-    decay_constant = 0.1  # the amount with which the exploration parameter changes after each episode
+    num_episodes = 10000
+    decay_constant = 0.01  # the amount with which the exploration parameter changes after each episode
     temperature = 0.1
     exploration_strategy = 'anneal_epsilon_greedy'
+    #exploration_strategy = 'boltzmann'
 
     start = time.time()
 

@@ -20,9 +20,8 @@ def boltzmann_exploration(actions, temperature):
     param temperature:  exploration parameter
     return:             vector with probabilities for choosing each option
     '''
-    # print(f'bolzmann exploration of {actions}')  # can remove this line once everything works
-    actions = actions[0] / temperature  # scale by temperature
-    a = actions - max(actions)  # substract maximum to prevent overflow of softmax
+    actions = actions[0] - np.max(actions[0])
+    a = actions / temperature  # scale by temperature
     return np.exp(a)/np.sum(np.exp(a))
 
 def plot(data_name, show, savename, smooth):
