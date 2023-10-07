@@ -18,8 +18,6 @@ num_episodes = 10000
 tau = 0.1
 decay_constant = 0.01  # the amount with which the exploration parameter changes after each episode
 temperature = 0.1
-activate_ER = True
-activate_TN = True
 exploration_strategy = 'anneal_epsilon_greedy'
 #exploration_strategy = 'boltzmann'
 
