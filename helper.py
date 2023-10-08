@@ -44,6 +44,7 @@ def plot_averaged(data_names, show, savename, smooth):
     n_names = len(data_names)
     data = np.load('data/'+data_names[0]+'.npy', allow_pickle=True)
     rewards = np.asarray(data.item().get('rewards'))
+    memory_size = np.asarray(data.item().get('memory_size'))
     for i in range(n_names-1):
         new_data =  np.load('data/'+data_names[i+1]+'.npy', allow_pickle=True)
         new_rewards = np.asarray(new_data.item().get('rewards'))
@@ -56,8 +57,8 @@ def plot_averaged(data_names, show, savename, smooth):
     optimal_rewards = [1]*len(episodes)
     plt.figure()
     plt.plot(episodes, mean_rewards, c='b', label='Model')
-    plt.plot(episodes, optimal_rewards, c='r', linestyle='dashed', label='Optimal')
-    plt.fill_between(episodes, mean_rewards-std_rewards, mean_rewards+std_rewards, color='gray', alpha=0.2)
+    #plt.plot(episodes, optimal_rewards, c='r', linestyle='dashed', label='Optimal')
+    plt.fill_between(episodes, np.clip(mean_rewards-std_rewards, -1*memory_size , None), np.clip(mean_rewards+std_rewards, None, 1), color='gray', alpha=0.2)
     plt.legend(loc='upper left')
     plt.xlabel('Episode')
     plt.ylabel('Reward')

@@ -8,7 +8,7 @@ from classic_NN import *
 
 
 class DQN():
-    def __init__(self, savename, base_model, target_network, n_holes, memory_size, learning_rate, gamma, num_episodes, tau, initial_exploration, final_exploration, decay_constant, temperature, exploration_strategy):
+    def __init__(self, savename, base_model, target_network, n_holes, memory_size, learning_rate, gamma, num_episodes, tau, initial_exploration, final_exploration, decay_constant, temperature, batch_size, min_size_buffer, max_size_buffer, exploration_strategy):
         self.savename = savename
         self.n_holes = n_holes
         self.memory_size = memory_size
@@ -22,6 +22,9 @@ class DQN():
         self.final_exploration = final_exploration
         self.decay_constant = decay_constant
         self.temperature = temperature
+        self.batch_size = batch_size
+        self.min_size_buffer = min_size_buffer
+        self.max_size_buffer = max_size_buffer
         self.exploration_strategy = exploration_strategy
 
     def update_model(self):
@@ -42,7 +45,7 @@ class DQN():
             # layer_TN.set_weights(layer_BM.get_weights())
 
     def save_data(self, rewards, episode_lengths):
-        data = {'n_holes': self.n_holes, 'memory_size': self.memory_size, 'rewards': rewards, 'episode_lengths': episode_lengths}
+        data = {'n_holes': self.n_holes, 'memory_size': self.memory_size, 'batch_size': self.batch_size, 'min_size_buffer': self.min_size_buffer, 'max_size_buffer': self.max_size_buffer, 'rewards': rewards, 'episode_lengths': episode_lengths}
         np.save('data/' + self.savename + '.npy', data)
         self.target_network.save('models/' + self.savename + '.keras')
 
@@ -67,9 +70,7 @@ class DQN():
         param learning_rate:    learning rate hyperparameter
         '''
 
-        batch_size = 32
-
-        sample_list = random.sample(range(0, len(replay_buffer)), batch_size)
+        sample_list = random.sample(range(0, len(replay_buffer)), self.batch_size)
 
         observation_list = list()
         new_observation_list = list()
@@ -85,9 +86,9 @@ class DQN():
             won_list.append(replay_buffer[element][4])
             lost_list.append(replay_buffer[element][5])
 
-        predicted_q_values = self.custom_predict(observation_list, self.base_model, batch_size)
+        predicted_q_values = self.custom_predict(observation_list, self.base_model, self.batch_size)
 
-        new_predicted_q_values = self.custom_predict(new_observation_list, self.target_network, batch_size)
+        new_predicted_q_values = self.custom_predict(new_observation_list, self.target_network, self.batch_size)
 
         q_bellman_list = list()
         for i in range(len(observation_list)):
@@ -102,7 +103,7 @@ class DQN():
                 q_bellman[j] = predicted_q_values[i][j]
             q_bellman_list.append(q_bellman)
 
-        self.base_model.fit(x=np.asarray(observation_list), y=np.asarray(q_bellman_list), batch_size=batch_size, verbose=0)
+        self.base_model.fit(x=np.asarray(observation_list), y=np.asarray(q_bellman_list), batch_size=self.batch_size, verbose=0)
 
     def main(self):
         '''
@@ -121,8 +122,7 @@ class DQN():
 
         episode_lengths = []
         rewards = []
-        replay_buffer = deque(maxlen=10000)
-        min_size_buffer = 1000
+        replay_buffer = deque(maxlen=self.max_size_buffer)
         current_episode_length = 0
         total_steps = 0
         observation = [0] * self.memory_size # The memory of actions that have been taken is the observation
@@ -164,7 +164,7 @@ class DQN():
                 new_observation[current_episode_length-1] = action
                 replay_buffer.append([observation, action, reward, new_observation, won, lost])
 
-                if (total_steps % 10 == 0) and (len(replay_buffer) > min_size_buffer): # the model is trained after every game, as long as the replay buffer is filled up enough
+                if (total_steps % 10 == 0) and (len(replay_buffer) > self.min_size_buffer): # the model is trained after every game, as long as the replay buffer is filled up enough
                     self.train(replay_buffer)
                     self.update_model()  # copy over the weights only after a certain amount of training steps have been taken
 
@@ -198,6 +198,9 @@ def main():
     num_episodes = 10000
     decay_constant = 0.01  # the amount with which the exploration parameter changes after each episode
     temperature = 0.1
+    batch_size = 32
+    min_size_buffer = 1000
+    max_size_buffer = 10000
     exploration_strategy = 'anneal_epsilon_greedy'
     #exploration_strategy = 'boltzmann'
 
@@ -207,7 +210,7 @@ def main():
     base_model = classical_model.initialize_model()
     target_network = classical_model.initialize_model()
 
-    dqn = DQN(savename, base_model, target_network, n_holes, memory_size, learning_rate, gamma, num_episodes, tau, initial_exploration, final_exploration, decay_constant, temperature, exploration_strategy)
+    dqn = DQN(savename, base_model, target_network, n_holes, memory_size, learning_rate, gamma, num_episodes, tau, initial_exploration, final_exploration, decay_constant, temperature, batch_size, min_size_buffer, max_size_buffer, exploration_strategy)
 
     dqn.main()
 
