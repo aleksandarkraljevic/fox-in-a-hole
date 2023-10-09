@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 import tensorflow as tf
+import seaborn as sns
+import pandas as pd
 from scipy.signal import savgol_filter
 from fox_in_a_hole import *
 
@@ -29,39 +31,37 @@ def plot(data_name, show, savename, smooth):
     rewards = data.item().get('rewards')
     if smooth==True:
         rewards = savgol_filter(rewards, 21, 1)
-    episodes = np.arange(1, len(rewards) + 1)
+    episodes = np.reshape(np.arange(1, len(rewards) + 1), (len(rewards),1))
+    dataframe = np.reshape(np.array(rewards), (len(rewards),1))
+    dataframe = np.append(dataframe, episodes, axis=1)
+    dataframe = pd.DataFrame(data=dataframe, columns=['reward', 'episodes'])
     plt.figure()
-    plt.plot(episodes, rewards)
-    plt.xlabel('Episode')
-    plt.ylabel('Reward')
+    sns.set_theme()
+    sns.lineplot(data=dataframe, x='episodes', y='reward')
     plt.title('Reward per episode')
     if savename != False:
         plt.savefig('plots/'+savename)
     if show:
         plt.show()
 
-def plot_averaged(data_names, show, savename, smooth):
+def plot_averaged(data_names, show, savename):
     n_names = len(data_names)
     data = np.load('data/'+data_names[0]+'.npy', allow_pickle=True)
-    rewards = np.asarray(data.item().get('rewards'))
-    memory_size = np.asarray(data.item().get('memory_size'))
+    rewards = data.item().get('rewards')
+    episodes = np.reshape(np.arange(1, len(rewards) + 1), (len(rewards),1))
+    dataframe = np.reshape(np.array(rewards), (len(rewards), 1))
+    dataframe = np.append(dataframe, episodes, axis=1)
     for i in range(n_names-1):
-        new_data =  np.load('data/'+data_names[i+1]+'.npy', allow_pickle=True)
-        new_rewards = np.asarray(new_data.item().get('rewards'))
-        rewards = np.vstack((rewards, new_rewards))
-    mean_rewards = np.mean(rewards, axis=0)
-    std_rewards = np.std(rewards, axis=0)
-    if smooth==True:
-        mean_rewards = savgol_filter(mean_rewards, 21, 1)
-    episodes = np.arange(1, len(mean_rewards) + 1)
-    optimal_rewards = [1]*len(episodes)
+        data =  np.load('data/'+data_names[i+1]+'.npy', allow_pickle=True)
+        rewards = data.item().get('rewards')
+        rewards = np.reshape(np.array(rewards), (len(rewards), 1))
+        new_stack = np.append(rewards, episodes, axis=1)
+        dataframe = np.append(dataframe, new_stack, axis=0)
+    dataframe = pd.DataFrame(data=dataframe, columns=['reward', 'episodes'])
+
     plt.figure()
-    plt.plot(episodes, mean_rewards, c='b', label='Model')
-    #plt.plot(episodes, optimal_rewards, c='r', linestyle='dashed', label='Optimal')
-    plt.fill_between(episodes, np.clip(mean_rewards-std_rewards, -1*memory_size , None), np.clip(mean_rewards+std_rewards, None, 1), color='gray', alpha=0.2)
-    plt.legend(loc='upper left')
-    plt.xlabel('Episode')
-    plt.ylabel('Reward')
+    sns.set_theme()
+    sns.lineplot(data=dataframe, x='episodes', y='reward')
     plt.title('Mean reward per episode')
     if savename != False:
         plt.savefig('plots/'+savename)
