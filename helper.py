@@ -30,10 +30,9 @@ def plot(data_name, show, savename, smooth):
     data = np.load('data/'+data_name+'.npy', allow_pickle=True)
     rewards = data.item().get('rewards')
     if smooth==True:
-        rewards = savgol_filter(rewards, 21, 1)
-    episodes = np.reshape(np.arange(1, len(rewards) + 1), (len(rewards),1))
-    dataframe = np.reshape(np.array(rewards), (len(rewards),1))
-    dataframe = np.append(dataframe, episodes, axis=1)
+        rewards = savgol_filter(rewards, 31, 1)
+    episodes = np.arange(1, len(rewards) + 1)
+    dataframe = np.vstack((rewards, episodes)).transpose()
     dataframe = pd.DataFrame(data=dataframe, columns=['reward', 'episodes'])
     plt.figure()
     sns.set_theme()
@@ -44,24 +43,29 @@ def plot(data_name, show, savename, smooth):
     if show:
         plt.show()
 
-def plot_averaged(data_names, show, savename):
+def plot_averaged(data_names, show, savename, smooth):
     n_names = len(data_names)
     data = np.load('data/'+data_names[0]+'.npy', allow_pickle=True)
+    memory_size = data.item().get('memory_size')
     rewards = data.item().get('rewards')
-    episodes = np.reshape(np.arange(1, len(rewards) + 1), (len(rewards),1))
-    dataframe = np.reshape(np.array(rewards), (len(rewards), 1))
-    dataframe = np.append(dataframe, episodes, axis=1)
+    episodes = np.arange(1, len(rewards) + 1)
     for i in range(n_names-1):
         data =  np.load('data/'+data_names[i+1]+'.npy', allow_pickle=True)
-        rewards = data.item().get('rewards')
-        rewards = np.reshape(np.array(rewards), (len(rewards), 1))
-        new_stack = np.append(rewards, episodes, axis=1)
-        dataframe = np.append(dataframe, new_stack, axis=0)
+        new_rewards = data.item().get('rewards')
+        rewards = np.vstack((rewards, new_rewards))
+    mean_rewards = np.mean(rewards, axis=0)
+    se_rewards = np.std(rewards, axis=0) / np.sqrt(n_names) # standard error
+    lower_bound = np.clip(mean_rewards-se_rewards, -1*memory_size , 1)
+    upper_bound = np.clip(mean_rewards+se_rewards, -1*memory_size, 1)
+    if smooth == True:
+        mean_rewards = savgol_filter(mean_rewards, 31, 1)
+    dataframe = np.vstack((mean_rewards, episodes)).transpose()
     dataframe = pd.DataFrame(data=dataframe, columns=['reward', 'episodes'])
 
     plt.figure()
     sns.set_theme()
     sns.lineplot(data=dataframe, x='episodes', y='reward')
+    plt.fill_between(episodes, lower_bound, upper_bound, color='b', alpha=0.2)
     plt.title('Mean reward per episode')
     if savename != False:
         plt.savefig('plots/'+savename)
