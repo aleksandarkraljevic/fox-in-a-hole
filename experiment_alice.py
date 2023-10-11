@@ -1,7 +1,7 @@
 from dqn import *
 
 # amount of repetitions that will be averaged over for the experiment
-repetitions = 2
+repetitions = 20
 # game parameters
 n_holes = 5
 memory_size = 2*n_holes
@@ -12,7 +12,7 @@ learning_rate = [0.01]
 gamma = 1  # discount factor
 initial_exploration = 1  # 100%
 final_exploration = 0.01  # 1%
-num_episodes = 50
+num_episodes = 5000
 tau = 0.1
 decay_constant = [0.01]  # the amount with which the exploration parameter changes after each episode
 temperature = 0.1
