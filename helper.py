@@ -68,7 +68,7 @@ def plot_averaged(data_names, show, savename, smooth):
     plt.fill_between(episodes, lower_bound, upper_bound, color='b', alpha=0.2)
     plt.title('Mean reward per episode')
     if savename != False:
-        plt.savefig('plots/'+savename)
+        plt.savefig('plots/'+savename+'.png')
     if show:
         plt.show()
 def evaluate(model_name, n_samples, print_strategy):

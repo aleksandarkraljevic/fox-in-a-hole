@@ -1,7 +1,7 @@
 from dqn import *
 
 # amount of repetitions that will be averaged over for the experiment
-repetitions = 20
+repetitions = 2
 # game parameters
 n_holes = 5
 memory_size = 2*n_holes
@@ -12,7 +12,7 @@ learning_rate = [0.01]
 gamma = 1  # discount factor
 initial_exploration = 1  # 100%
 final_exploration = 0.01  # 1%
-num_episodes = 5000
+num_episodes = 50
 tau = 0.1
 decay_constant = [0.01]  # the amount with which the exploration parameter changes after each episode
 temperature = 0.1
@@ -22,8 +22,6 @@ max_size_buffer = 10000
 exploration_strategy = 'anneal_epsilon_greedy'
 
 data_names = []
-
-start = time.time()
 
 for lr in learning_rate:
     for dc in decay_constant:
@@ -42,10 +40,7 @@ for lr in learning_rate:
 
             data_names.append(file_name)
 
-        plot_averaged(data_names=data_names, show=True, savename=savename, smooth=False)
-        plot_averaged(data_names=data_names, show=True, savename=savename+'-smooth', smooth=True)
+        plot_averaged(data_names=data_names, show=False, savename=savename, smooth=False)
+        plot_averaged(data_names=data_names, show=False, savename=savename+'-smooth', smooth=True)
 
         data_names = []
-
-end = time.time()
-print('Total time: {} seconds'.format(round(end - start, 1)))
