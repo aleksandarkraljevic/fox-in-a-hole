@@ -3,11 +3,12 @@
 #SBATCH --output=%x_%j.out
 #SBATCH --mail-user=a.kraljevic.2000@hotmail.com
 #SBATCH --mail-type="ALL"
-#SBATCH --partition="cpu-short"
+#SBATCH --partition="gpu-short"
 #SBATCH --time=01:30:00
 #SBATCH --ntasks=1
 #SBATCH --mem=1600M
 #SBATCH --cpus-per-task=1
+#SBATCH --gres=gpu:1
 
 # load modules (assuming you start from the default environment)
 # we explicitly call the modules to improve reproducibility
