@@ -6,8 +6,8 @@
 #SBATCH --partition="cpu-short"
 #SBATCH --time=01:30:00
 #SBATCH --ntasks=1
-#SBATCH --mem=1600M
-#SBATCH --cpus-per-task=1
+#SBATCH --mem=16000M
+#SBATCH --cpus-per-task=4
 
 # load modules (assuming you start from the default environment)
 # we explicitly call the modules to improve reproducibility

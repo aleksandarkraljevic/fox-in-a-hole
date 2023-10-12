@@ -1,32 +1,32 @@
 #!/bin/bash
-#SBATCH --job-name=test_experiment
+#SBATCH --job-name=test_experiment_gpu
 #SBATCH --output=%x_%j.out
+#SBATCH --error=%x_%j.err
 #SBATCH --mail-user=a.kraljevic.2000@hotmail.com
 #SBATCH --mail-type="ALL"
-#SBATCH --partition="gpu-short"
+#SBATCH --mem=16G
 #SBATCH --time=01:30:00
+#SBATCH --partition=gpu-short
 #SBATCH --ntasks=1
-#SBATCH --mem=1600M
-#SBATCH --cpus-per-task=1
 #SBATCH --gres=gpu:1
 
 # load modules (assuming you start from the default environment)
 # we explicitly call the modules to improve reproducibility
 # in case the default settings change
 module load Python/3.10.8-GCCcore-12.2.0
+module load CUDA/12.1.1
 
 # Source the Python virtual environment
 source $HOME/quantumrl/python_venv/bin/activate
+TEST_DIR=$(pwd)
+echo "## Current dircectory $TEST_DIR"
 
-echo "[$SHELL] #### Starting Python experiment"
-echo "[$SHELL] ## This is $SLURM_JOB_USER on $HOSTNAME and this job has the ID $SLURM_JOB_ID"
-# get the current working directory
-export CWD=$(pwd)
-echo "[$SHELL] ## current working directory: "$CWD
+echo "## Number of available CUDA devices: $CUDA_VISIBLE_DEVICES"
 
-# Run the file
-echo "[$SHELL] ## Run script"
+echo "## Checking status of CUDA device with nvidia-smi"
+nvidia-smi
+
+echo "## Running test"
 python experiment_alice.py
-echo "[$SHELL] ## Script finished"
 
-echo "[$SHELL] #### Finished Python test. Have a nice day"
+echo "## Test finished. Goodbye"
