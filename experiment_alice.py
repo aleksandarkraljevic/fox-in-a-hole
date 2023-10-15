@@ -8,13 +8,13 @@ memory_size = 2*n_holes
 # neural network parameters
 n_nodes = 12
 # Hyperparameters of the algorithm and other parameters of the program
-learning_rate = [0.01]
+learning_rate = [0.1, 0.001]
 gamma = 1  # discount factor
 initial_exploration = 1  # 100%
 final_exploration = 0.01  # 1%
 num_episodes = 5000
 tau = 0.1
-decay_constant = [0.01]  # the amount with which the exploration parameter changes after each episode
+decay_constant = [0.1]  # the amount with which the exploration parameter changes after each episode
 temperature = 0.1
 batch_size = 32
 min_size_buffer = 1000
@@ -28,7 +28,7 @@ for lr in learning_rate:
         savename = 'lr_'+str(lr)+'-dc_'+str(dc)
         for rep in range(repetitions):
             classical_model = ClassicalModel(n_holes=n_holes, memory_size=memory_size, n_nodes=n_nodes,
-                                             learning_rate=learning_rate)
+                                             learning_rate=lr)
             base_model = classical_model.initialize_model()
             target_network = classical_model.initialize_model()
 

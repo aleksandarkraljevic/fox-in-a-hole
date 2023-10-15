@@ -196,7 +196,7 @@ def main():
     initial_exploration = 1  # 100%
     final_exploration = 0.01  # 1%
     num_episodes = 10000
-    decay_constant = 0.01  # the amount with which the exploration parameter changes after each episode
+    decay_constant = 0.0001  # the amount with which the exploration parameter changes after each episode
     temperature = 0.1
     batch_size = 32
     min_size_buffer = 1000

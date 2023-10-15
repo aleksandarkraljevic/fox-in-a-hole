@@ -58,7 +58,7 @@ def plot_averaged(data_names, show, savename, smooth):
     lower_bound = np.clip(mean_rewards-se_rewards, -1*memory_size , 1)
     upper_bound = np.clip(mean_rewards+se_rewards, -1*memory_size, 1)
     if smooth == True:
-        mean_rewards = savgol_filter(mean_rewards, 31, 1)
+        mean_rewards = savgol_filter(mean_rewards, 51, 1)
     dataframe = np.vstack((mean_rewards, episodes)).transpose()
     dataframe = pd.DataFrame(data=dataframe, columns=['reward', 'episodes'])
 
@@ -71,6 +71,41 @@ def plot_averaged(data_names, show, savename, smooth):
         plt.savefig('plots/'+savename+'.png')
     if show:
         plt.show()
+
+def compare_models(parameter_names, repetitions, show, savename, smooth):
+    # this function requires the user to put all the experiment data in the data folder
+    plt.figure()
+    sns.set_theme()
+
+    for name in parameter_names:
+        data = np.load('data/'+name+'-repetition_1.npy', allow_pickle=True)
+        memory_size = data.item().get('memory_size')
+        rewards = data.item().get('rewards')
+        episodes = np.arange(1, len(rewards) + 1)
+        for i in range(repetitions-1):
+            data = np.load('data/'+name+'-repetition_'+str(i+2)+'.npy', allow_pickle=True)
+            new_rewards = data.item().get('rewards')
+            rewards = np.vstack((rewards, new_rewards))
+        mean_rewards = np.mean(rewards, axis=0)
+        se_rewards = np.std(rewards, axis=0) / np.sqrt(repetitions)  # standard error
+        lower_bound = np.clip(mean_rewards - se_rewards, -1 * memory_size, 1)
+        upper_bound = np.clip(mean_rewards + se_rewards, -1 * memory_size, 1)
+        if smooth == True:
+            mean_rewards = savgol_filter(mean_rewards, 51, 1)
+        dataframe = np.vstack((mean_rewards, episodes)).transpose()
+        dataframe = pd.DataFrame(data=dataframe, columns=['reward', 'episodes'])
+        learning_rate = data.item().get('learning_rate')
+        decay_constant = data.item().get('decay_constant')
+
+        sns.lineplot(data=dataframe, x='episodes', y='reward', label=name)
+        plt.fill_between(episodes, lower_bound, upper_bound, alpha=0.2)
+
+    plt.title('Mean reward per episode')
+    if savename != False:
+        plt.savefig('plots/' + savename + '.png')
+    if show:
+        plt.show()
+
 def evaluate(model_name, n_samples, print_strategy):
     model = tf.keras.models.load_model('models/'+model_name+'.keras')
     data = np.load('data/'+model_name+'.npy', allow_pickle=True)
