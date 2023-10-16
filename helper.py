@@ -144,3 +144,5 @@ def evaluate(model_name, n_samples, print_strategy):
         observation = [0] * memory_size
     print('The average amount of guesses needed to finish the game is: ',np.mean(episode_lengths))
     print('The average reward per game after '+str(n_samples)+' games is: ',np.mean(rewards))
+
+    return np.mean(episode_lengths)
