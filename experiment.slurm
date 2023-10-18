@@ -1,13 +1,13 @@
 #!/bin/bash
-#SBATCH --job-name=test_experiment
+#SBATCH --job-name=experiment-lr_0.01_0.001-dc_0.001
 #SBATCH --output=%x_%j.out
 #SBATCH --mail-user=a.kraljevic.2000@hotmail.com
 #SBATCH --mail-type="ALL"
-#SBATCH --partition="cpu-short"
-#SBATCH --time=01:30:00
+#SBATCH --partition="cpu-medium"
+#SBATCH --time=07:30:00
 #SBATCH --ntasks=1
-#SBATCH --mem=16000M
-#SBATCH --cpus-per-task=4
+#SBATCH --mem=48G
+#SBATCH --cpus-per-task=3
 
 # load modules (assuming you start from the default environment)
 # we explicitly call the modules to improve reproducibility

@@ -115,7 +115,7 @@ class DQN():
         param final_exploration:        lower limit of epsilon value for annealing epsilon greedy
         param decay_constant:           decreasing value for annealing epsilon greedy
         param temperature:              key parameter of boltzmann's policy
-        param exploration_strategy:     by default is set to 'anneal_epsilon_greedy' but 'boltzmann' is also a valid option
+        param exploration_strategy:     by default is set to 'egreedy' but 'boltzmann' is also a valid option
         '''
 
         env = FoxInAHole(self.n_holes, self.memory_size)
@@ -136,7 +136,7 @@ class DQN():
         for episode in tqdm(range(self.num_episodes)):
             won, lost = done # won and lost represent whether the game has been won or lost yet
 
-            if self.exploration_strategy == 'anneal_epsilon_greedy':
+            if self.exploration_strategy == 'egreedy':
                 # annealing, done before the while loop because the first episode equals 0 so it returns the original epsilon back
                 exploration_parameter = exponential_anneal(episode, self.initial_exploration, self.final_exploration, self.decay_constant)
 
@@ -149,7 +149,7 @@ class DQN():
                 predicted_q_values = self.base_model(np.asarray(observation).reshape(1,self.memory_size))
 
                 # choose an action
-                if self.exploration_strategy == 'anneal_epsilon_greedy':
+                if self.exploration_strategy == 'egreedy':
                     if np.random.random() < exploration_parameter:    # exploration
                         action = np.random.randint(1, self.n_holes+1)
                     else:
@@ -201,7 +201,7 @@ def main():
     batch_size = 32
     min_size_buffer = 1000
     max_size_buffer = 10000
-    exploration_strategy = 'anneal_epsilon_greedy'
+    exploration_strategy = 'egreedy'
     #exploration_strategy = 'boltzmann'
 
     start = time.time()

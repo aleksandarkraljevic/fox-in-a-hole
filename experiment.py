@@ -19,7 +19,7 @@ temperature = 0.1
 batch_size = 32
 min_size_buffer = 1000
 max_size_buffer = 10000
-exploration_strategy = 'anneal_epsilon_greedy'
+exploration_strategy = 'egreedy'
 
 data_names = []
 

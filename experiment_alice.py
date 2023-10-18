@@ -1,25 +1,25 @@
 from dqn import *
 
 # amount of repetitions that will be averaged over for the experiment
-repetitions = 20
+repetitions = 4
 # game parameters
 n_holes = 5
 memory_size = 2*n_holes
 # neural network parameters
 n_nodes = 12
 # Hyperparameters of the algorithm and other parameters of the program
-learning_rate = [0.1, 0.001]
+learning_rate = [0.01, 0.001]
 gamma = 1  # discount factor
 initial_exploration = 1  # 100%
 final_exploration = 0.01  # 1%
-num_episodes = 5000
+num_episodes = 10000
 tau = 0.1
-decay_constant = [0.1]  # the amount with which the exploration parameter changes after each episode
-temperature = 0.1
+decay_constant = [0.001]  # the amount with which the exploration parameter changes after each episode
+temperature = 0.01
 batch_size = 32
 min_size_buffer = 1000
 max_size_buffer = 10000
-exploration_strategy = 'anneal_epsilon_greedy'
+exploration_strategy = 'egreedy'
 
 data_names = []
 

@@ -94,8 +94,6 @@ def compare_models(parameter_names, repetitions, show, savename, smooth):
             mean_rewards = savgol_filter(mean_rewards, 51, 1)
         dataframe = np.vstack((mean_rewards, episodes)).transpose()
         dataframe = pd.DataFrame(data=dataframe, columns=['reward', 'episodes'])
-        learning_rate = data.item().get('learning_rate')
-        decay_constant = data.item().get('decay_constant')
 
         sns.lineplot(data=dataframe, x='episodes', y='reward', label=name)
         plt.fill_between(episodes, lower_bound, upper_bound, alpha=0.2)
