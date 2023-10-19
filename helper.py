@@ -96,7 +96,7 @@ def compare_models(parameter_names, repetitions, show, savename, smooth):
         dataframe = pd.DataFrame(data=dataframe, columns=['reward', 'episodes'])
 
         sns.lineplot(data=dataframe, x='episodes', y='reward', label=name)
-        plt.fill_between(episodes, lower_bound, upper_bound, alpha=0.2)
+        plt.fill_between(episodes, lower_bound, upper_bound, alpha=0.3)
 
     plt.title('Mean reward per episode')
     if savename != False:
@@ -104,7 +104,7 @@ def compare_models(parameter_names, repetitions, show, savename, smooth):
     if show:
         plt.show()
 
-def evaluate(model_name, n_samples, print_strategy):
+def evaluate(model_name, n_samples, print_strategy, print_evaluation):
     model = tf.keras.models.load_model('models/'+model_name+'.keras')
     data = np.load('data/'+model_name+'.npy', allow_pickle=True)
     n_holes = data.item().get('n_holes')
@@ -140,7 +140,9 @@ def evaluate(model_name, n_samples, print_strategy):
         done = env.reset()
         won, lost = done
         observation = [0] * memory_size
-    print('The average amount of guesses needed to finish the game is: ',np.mean(episode_lengths))
-    print('The average reward per game after '+str(n_samples)+' games is: ',np.mean(rewards))
+
+    if print_evaluation:
+        print('The average amount of guesses needed to finish the game is: ',round(np.mean(episode_lengths),2))
+        print('The average reward per game after '+str(n_samples)+' games is: ',round(np.mean(rewards),2))
 
     return np.mean(episode_lengths)
