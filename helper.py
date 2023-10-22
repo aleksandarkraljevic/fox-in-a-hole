@@ -72,18 +72,18 @@ def plot_averaged(data_names, show, savename, smooth):
     if show:
         plt.show()
 
-def compare_models(parameter_names, repetitions, show, savename, smooth):
+def compare_models(parameter_names, repetitions, show, savename, label_names, smooth):
     # this function requires the user to put all the experiment data in the data folder
     plt.figure()
     sns.set_theme()
 
-    for name in parameter_names:
-        data = np.load('data/'+name+'-repetition_1.npy', allow_pickle=True)
+    for experiment in range(len(parameter_names)):
+        data = np.load('data/'+parameter_names[experiment]+'-repetition_1.npy', allow_pickle=True)
         memory_size = data.item().get('memory_size')
         rewards = data.item().get('rewards')
         episodes = np.arange(1, len(rewards) + 1)
         for i in range(repetitions-1):
-            data = np.load('data/'+name+'-repetition_'+str(i+2)+'.npy', allow_pickle=True)
+            data = np.load('data/'+parameter_names[experiment]+'-repetition_'+str(i+2)+'.npy', allow_pickle=True)
             new_rewards = data.item().get('rewards')
             rewards = np.vstack((rewards, new_rewards))
         mean_rewards = np.mean(rewards, axis=0)
@@ -95,7 +95,7 @@ def compare_models(parameter_names, repetitions, show, savename, smooth):
         dataframe = np.vstack((mean_rewards, episodes)).transpose()
         dataframe = pd.DataFrame(data=dataframe, columns=['reward', 'episodes'])
 
-        sns.lineplot(data=dataframe, x='episodes', y='reward', label=name)
+        sns.lineplot(data=dataframe, x='episodes', y='reward', label=label_names[experiment])
         plt.fill_between(episodes, lower_bound, upper_bound, alpha=0.3)
 
     plt.title('Mean reward per episode')

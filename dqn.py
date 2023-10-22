@@ -125,6 +125,7 @@ class DQN():
         replay_buffer = deque(maxlen=self.max_size_buffer)
         current_episode_length = 0
         total_steps = 0
+        #hard_update_steps = 0
         observation = [0] * self.memory_size # The memory of actions that have been taken is the observation
         possible_actions = list(range(self.n_holes))
         possible_actions = [x+1 for x in possible_actions]
@@ -166,7 +167,9 @@ class DQN():
 
                 if (total_steps % 10 == 0) and (len(replay_buffer) > self.min_size_buffer): # the model is trained after every game, as long as the replay buffer is filled up enough
                     self.train(replay_buffer)
-                    self.update_model()  # copy over the weights only after a certain amount of training steps have been taken
+                    #if hard_update_steps % 5 == 0:
+                    self.update_model()  # copy over the weights only after a certain amount of training steps have been taken if hard update, or every step if soft update
+                    #hard_update_steps += 1
 
                 # roll over
                 observation = new_observation
