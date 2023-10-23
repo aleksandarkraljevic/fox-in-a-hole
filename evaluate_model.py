@@ -36,13 +36,13 @@ def evaluate_model(name, n_samples, print_strategy, print_evaluation, plot, show
             plot(data_name=name, show=show, savename=False, smooth=False)
             plot(data_name=name, show=show, savename=False, smooth=True)
 
-parameter_names = ['tau_0.05', 'hard_20']
-label_names = ['tau_0.05', 'hard_20']
-#parameter_name = 'train_freq_5'
+parameter_names = ['train_freq_5', 'tau_0.05', 'train_freq_20']
+label_names = ['train_freq_5', 'train_freq_10', 'train_freq_20']
+parameter_name = 'train_freq_20'
 
 #evaluate_model('lr_0.01-dc_0.01-repetition_1', 10000, True, True, False, False, False)
 
-compare_models(parameter_names=parameter_names, repetitions=20, show=True, savename='compare_hard_soft_update', label_names=label_names, smooth=True)
+compare_models(parameter_names=parameter_names, repetitions=20, show=True, savename='compare_train_freq', label_names=label_names, smooth=True)
 
 #evaluate_experiment(parameter_name=parameter_name, repetitions=2, n_samples=10000, print_strategies=True, print_evaluation=False)
 
