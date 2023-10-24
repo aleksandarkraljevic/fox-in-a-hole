@@ -16,7 +16,7 @@ def circuit(weights, depth):
         for qubit in range(n_qubits):
             qml.RZ(weights[qubit + weight_counter * (n_qubits)], wires=qubit)
         weight_counter += 1
-        for qubit in range(n_qubits)
+        for qubit in range(n_qubits):
             qml.CNOT(wires=[qubit, qubit+1])
         qml.CNOT(wires=[0, n_qubits-1])
 
