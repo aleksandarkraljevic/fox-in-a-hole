@@ -36,8 +36,8 @@ def evaluate_model(name, n_samples, print_strategy, print_evaluation, plot, show
             plot(data_name=name, show=show, savename=False, smooth=False)
             plot(data_name=name, show=show, savename=False, smooth=True)
 
-parameter_names = ['layers_1-nodes_24', 'layers_2-nodes_24', 'layers_3-nodes_12', 'layers_5-nodes_6']
-label_names = ['layers_1-nodes_24', 'layers_2-nodes_24', 'layers_3-nodes_12', 'layers_5-nodes_6']
+parameter_names = ['layers_1-nodes_24', 'tau_0.05', 'layers_3-nodes_12']
+label_names = ['layers_1-nodes_24', 'layers_2-nodes_12', 'layers_3-nodes_12']
 parameter_name = 'layers_5-nodes_6'
 
 #evaluate_model('lr_0.01-dc_0.01-repetition_1', 10000, True, True, False, False, False)

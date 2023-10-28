@@ -195,13 +195,13 @@ def main():
     # Hyperparameters of the algorithm and other parameters of the program
     learning_rate = 0.01
     gamma = 1  # discount factor
-    tau = 0.1 # TN soft-update speed parameter, tau is the ratio of the TN that gets copied over at each training step
+    tau = 0.05 # TN soft-update speed parameter, tau is the ratio of the TN that gets copied over at each training step
     initial_exploration = 1  # 100%
     final_exploration = 0.01  # 1%
     num_episodes = 10000
-    decay_constant = 0.0001  # the amount with which the exploration parameter changes after each episode
+    decay_constant = 0.01  # the amount with which the exploration parameter changes after each episode
     temperature = 0.1
-    batch_size = 32
+    batch_size = 64
     min_size_buffer = 1000
     max_size_buffer = 10000
     exploration_strategy = 'egreedy'
