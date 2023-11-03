@@ -1,4 +1,6 @@
 from collections import deque
+
+import numpy as np
 from tqdm import tqdm
 import time
 import random
@@ -90,20 +92,17 @@ class DQN():
 
         new_predicted_q_values = self.custom_predict(new_observation_list, self.target_network, self.batch_size)
 
-        q_bellman_list = list()
+        q_list = list()
         for i in range(len(observation_list)):
             if (not won_list[i]) and (not lost_list[i]):
-                q_bellman = predicted_q_values[i] + self.learning_rate * (reward_list[i] + self.gamma * max(new_predicted_q_values[i]) - predicted_q_values[i])
+                target_q = reward_list[i] + self.gamma * max(new_predicted_q_values[i])
             else:
-                q_bellman = predicted_q_values[i] + self.learning_rate * (reward_list[i] - predicted_q_values[i])
-            # here we have to replace the q values of the actions that we didn't choose to take back with their previous values, such that only the taken state-action is updated
-            possible_action_indices = list(range(self.n_holes))
-            possible_action_indices.pop(action_list[i]-1)
-            for j in possible_action_indices:
-                q_bellman[j] = predicted_q_values[i][j]
-            q_bellman_list.append(q_bellman)
+                target_q = reward_list[i]
+            # here we have to replace the q value of the hole that we ended up choosing with the target q value so that only that one gets updated
+            predicted_q_values[i,action_list[i]-1] = target_q
+            target_q_values = predicted_q_values # rename it just for clarity's sake
 
-        self.base_model.fit(x=np.asarray(observation_list), y=np.asarray(q_bellman_list), batch_size=self.batch_size, verbose=0)
+        self.base_model.fit(x=np.asarray(observation_list), y=target_q_values, batch_size=self.batch_size, verbose=0)
 
     def main(self):
         '''
@@ -121,21 +120,21 @@ class DQN():
         env = FoxInAHole(self.n_holes, self.memory_size)
 
         episode_lengths = []
-        rewards = []
+        episode_rewards = []
         replay_buffer = deque(maxlen=self.max_size_buffer)
-        current_episode_length = 0
         total_steps = 0
         #hard_update_steps = 0
-        observation = [0] * self.memory_size # The memory of actions that have been taken is the observation
         possible_actions = list(range(self.n_holes))
         possible_actions = [x+1 for x in possible_actions]
 
         self.update_model() # start by copying over the weights from TN to base model to ensure they are identical
 
-        done = env.reset()
-
         for episode in tqdm(range(self.num_episodes)):
+            done = env.reset()
             won, lost = done # won and lost represent whether the game has been won or lost yet
+            observation = [0] * self.memory_size  # The memory of actions that have been taken is the observation
+            episode_reward = 0
+            current_episode_length = 0
 
             if self.exploration_strategy == 'egreedy':
                 # annealing, done before the while loop because the first episode equals 0 so it returns the original epsilon back
@@ -164,6 +163,7 @@ class DQN():
                 new_observation = observation.copy()
                 new_observation[current_episode_length-1] = action
                 replay_buffer.append([observation, action, reward, new_observation, won, lost])
+                episode_reward += reward
 
                 if (total_steps % 10 == 0) and (len(replay_buffer) > self.min_size_buffer): # the model is trained after every game, as long as the replay buffer is filled up enough
                     self.train(replay_buffer)
@@ -176,20 +176,17 @@ class DQN():
                 env.step()
 
             episode_lengths.append(current_episode_length)
-            rewards.append(reward)
-            current_episode_length = 0
-            done = env.reset()
-            observation = [0] * self.memory_size
+            episode_rewards.append(episode_reward)
 
         if self.savename != False:
-            self.save_data(rewards, episode_lengths)
+            self.save_data(episode_rewards, episode_lengths)
 
 def main():
     # name that will be used to save both the model and all its data with
     savename = 'test'
     # game parameters
     n_holes = 5
-    memory_size = 2*n_holes
+    memory_size = 2*(n_holes-2)
     # model parameters
     n_nodes = 12
     # Hyperparameters of the algorithm and other parameters of the program
@@ -198,7 +195,7 @@ def main():
     tau = 0.05 # TN soft-update speed parameter, tau is the ratio of the TN that gets copied over at each training step
     initial_exploration = 1  # 100%
     final_exploration = 0.01  # 1%
-    num_episodes = 10000
+    num_episodes = 500
     decay_constant = 0.01  # the amount with which the exploration parameter changes after each episode
     temperature = 0.1
     batch_size = 64

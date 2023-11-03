@@ -4,7 +4,7 @@ from dqn import *
 repetitions = 20
 # game parameters
 n_holes = 5
-memory_size = 2*n_holes
+memory_size = 2*(n_holes-2)
 # neural network parameters
 n_nodes = 12
 # Hyperparameters of the algorithm and other parameters of the program
