@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 import seaborn as sns
 import pandas as pd
+from collections import deque
 from scipy.signal import savgol_filter
 from fox_in_a_hole import *
 
@@ -110,39 +111,36 @@ def evaluate(model_name, n_samples, print_strategy, print_evaluation):
     n_holes = data.item().get('n_holes')
     memory_size = data.item().get('memory_size')
     env = FoxInAHole(n_holes, memory_size)
-    observation = [0] * memory_size
-    done = env.reset()
-    won, lost = done
-    current_episode_length = 0
     episode_lengths = []
-    rewards = []
+    episode_rewards = []
     if print_strategy:
-        for step in range(len(observation)):
+        done = env.reset()
+        observation = deque([0]*memory_size, maxlen=memory_size)
+        for step in range(memory_size):
             predicted_q_values = model(np.asarray(observation).reshape(1, memory_size))
             action = np.argmax(predicted_q_values) + 1
-            observation[step] = action
+            observation.append(action)
         print(observation)
-        observation = [0] * memory_size
     for sample in range(n_samples):
-        while (not won) and (not lost):
+        current_episode_length = 0
+        episode_reward = 0
+        done = env.reset()
+        observation = deque([0]*memory_size, maxlen=memory_size)
+        while not done:
             current_episode_length += 1
             predicted_q_values = model(np.asarray(observation).reshape(1, memory_size))
             action = np.argmax(predicted_q_values) + 1
-            reward, done = env.guess(action, current_episode_length)
-            won, lost = done
+            reward, done = env.guess(action)
+            episode_reward += reward
             new_observation = observation.copy()
-            new_observation[current_episode_length - 1] = action
+            new_observation.append(action)
             observation = new_observation
             env.step()
         episode_lengths.append(current_episode_length)
-        rewards.append(reward)
-        current_episode_length = 0
-        done = env.reset()
-        won, lost = done
-        observation = [0] * memory_size
+        episode_rewards.append(episode_reward)
 
     if print_evaluation:
         print('The average amount of guesses needed to finish the game is: ',round(np.mean(episode_lengths),2))
-        print('The average reward per game after '+str(n_samples)+' games is: ',round(np.mean(rewards),2))
+        print('The average reward per game after '+str(n_samples)+' games is: ',round(np.mean(episode_rewards),2))
 
     return np.mean(episode_lengths)

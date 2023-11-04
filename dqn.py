@@ -1,5 +1,3 @@
-from collections import deque
-
 import numpy as np
 from tqdm import tqdm
 import time
@@ -78,26 +76,20 @@ class DQN():
         new_observation_list = list()
         action_list = list()
         reward_list = list()
-        won_list = list()
-        lost_list = list()
+        done_list = list()
         for element in sample_list:
             observation_list.append(replay_buffer[element][0])
             new_observation_list.append(replay_buffer[element][3])
             action_list.append(replay_buffer[element][1])
             reward_list.append(replay_buffer[element][2])
-            won_list.append(replay_buffer[element][4])
-            lost_list.append(replay_buffer[element][5])
+            done_list.append(replay_buffer[element][4])
 
         predicted_q_values = self.custom_predict(observation_list, self.base_model, self.batch_size)
 
         new_predicted_q_values = self.custom_predict(new_observation_list, self.target_network, self.batch_size)
 
-        q_list = list()
         for i in range(len(observation_list)):
-            if (not won_list[i]) and (not lost_list[i]):
-                target_q = reward_list[i] + self.gamma * max(new_predicted_q_values[i])
-            else:
-                target_q = reward_list[i]
+            target_q = reward_list[i] + self.gamma * max(new_predicted_q_values[i]) * (1 - float(done_list[i]))
             # here we have to replace the q value of the hole that we ended up choosing with the target q value so that only that one gets updated
             predicted_q_values[i,action_list[i]-1] = target_q
             target_q_values = predicted_q_values # rename it just for clarity's sake
@@ -131,8 +123,7 @@ class DQN():
 
         for episode in tqdm(range(self.num_episodes)):
             done = env.reset()
-            won, lost = done # won and lost represent whether the game has been won or lost yet
-            observation = [0] * self.memory_size  # The memory of actions that have been taken is the observation
+            observation = deque([0]*self.memory_size, maxlen=self.memory_size)  # The memory of actions that have been taken is the observation
             episode_reward = 0
             current_episode_length = 0
 
@@ -140,7 +131,7 @@ class DQN():
                 # annealing, done before the while loop because the first episode equals 0 so it returns the original epsilon back
                 exploration_parameter = exponential_anneal(episode, self.initial_exploration, self.final_exploration, self.decay_constant)
 
-            while (not won) and (not lost):
+            while not done:
                 current_episode_length += 1
                 total_steps += 1
 
@@ -158,11 +149,10 @@ class DQN():
                     probabilities = boltzmann_exploration(predicted_q_values, self.temperature)
                     action = np.random.choice(possible_actions, p=probabilities)
 
-                reward, done = env.guess(action, current_episode_length)
-                won, lost = done
+                reward, done = env.guess(action)
                 new_observation = observation.copy()
-                new_observation[current_episode_length-1] = action
-                replay_buffer.append([observation, action, reward, new_observation, won, lost])
+                new_observation.append(action)
+                replay_buffer.append([observation, action, reward, new_observation, done])
                 episode_reward += reward
 
                 if (total_steps % 10 == 0) and (len(replay_buffer) > self.min_size_buffer): # the model is trained after every game, as long as the replay buffer is filled up enough
@@ -195,7 +185,7 @@ def main():
     tau = 0.05 # TN soft-update speed parameter, tau is the ratio of the TN that gets copied over at each training step
     initial_exploration = 1  # 100%
     final_exploration = 0.01  # 1%
-    num_episodes = 500
+    num_episodes = 5000
     decay_constant = 0.01  # the amount with which the exploration parameter changes after each episode
     temperature = 0.1
     batch_size = 64

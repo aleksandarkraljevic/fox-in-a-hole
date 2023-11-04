@@ -26,9 +26,9 @@ def plot_experiment(parameter_name, repetitions, show, save):
         plot_averaged(data_names=data_names, show=show, savename=False, smooth=False)
         plot_averaged(data_names=data_names, show=show, savename=False, smooth=True)
 
-def evaluate_model(name, n_samples, print_strategy, print_evaluation, plot, show, save):
-    evaluate(model_name=name, n_samples=n_samples, print_strategy=print_strategy)
-    if plot:
+def evaluate_model(name, n_samples, print_strategy, print_evaluation, plot_model, show, save):
+    evaluate(model_name=name, n_samples=n_samples, print_strategy=print_strategy, print_evaluation=print_evaluation)
+    if plot_model:
         if save:
             plot(data_name=name, show=show, savename=name, smooth=False)
             plot(data_name=name, show=show, savename=name+'-smooth', smooth=True)
@@ -38,11 +38,11 @@ def evaluate_model(name, n_samples, print_strategy, print_evaluation, plot, show
 
 parameter_names = ['layers_1-nodes_24', 'tau_0.05', 'layers_3-nodes_12']
 label_names = ['layers_1-nodes_24', 'layers_2-nodes_12', 'layers_3-nodes_12']
-parameter_name = 'layers_5-nodes_6'
+parameter_name = 'test'
 
-#evaluate_model('lr_0.01-dc_0.01-repetition_1', 10000, True, True, False, False, False)
+evaluate_model('test', 10000, True, True, True, True, True)
 
-compare_models(parameter_names=parameter_names, repetitions=20, show=True, savename='compare_layers_nodes', label_names=label_names, smooth=True)
+#compare_models(parameter_names=parameter_names, repetitions=20, show=True, savename='compare_layers_nodes', label_names=label_names, smooth=True)
 
 #evaluate_experiment(parameter_name=parameter_name, repetitions=2, n_samples=10000, print_strategies=True, print_evaluation=False)
 
