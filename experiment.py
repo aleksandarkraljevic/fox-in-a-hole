@@ -30,7 +30,7 @@ for lr in learning_rate:
         savename = 'lr_'+str(lr)+'-dc_'+str(dc)
         for rep in range(repetitions):
             classical_model = ClassicalModel(n_holes=n_holes, memory_size=memory_size, n_nodes=n_nodes,
-                                             learning_rate=learning_rate)
+                                             learning_rate=lr)
             base_model = classical_model.initialize_model()
             target_network = classical_model.initialize_model()
 

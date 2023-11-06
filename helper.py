@@ -31,7 +31,7 @@ def plot(data_name, show, savename, smooth):
     data = np.load('data/'+data_name+'.npy', allow_pickle=True)
     rewards = data.item().get('rewards')
     if smooth==True:
-        rewards = savgol_filter(rewards, 31, 1)
+        rewards = savgol_filter(rewards, 71, 1)
     episodes = np.arange(1, len(rewards) + 1)
     dataframe = np.vstack((rewards, episodes)).transpose()
     dataframe = pd.DataFrame(data=dataframe, columns=['reward', 'episodes'])
@@ -59,7 +59,7 @@ def plot_averaged(data_names, show, savename, smooth):
     lower_bound = np.clip(mean_rewards-se_rewards, -1*memory_size , 1)
     upper_bound = np.clip(mean_rewards+se_rewards, -1*memory_size, 1)
     if smooth == True:
-        mean_rewards = savgol_filter(mean_rewards, 51, 1)
+        mean_rewards = savgol_filter(mean_rewards, 71, 1)
     dataframe = np.vstack((mean_rewards, episodes)).transpose()
     dataframe = pd.DataFrame(data=dataframe, columns=['reward', 'episodes'])
 
@@ -92,7 +92,7 @@ def compare_models(parameter_names, repetitions, show, savename, label_names, sm
         lower_bound = np.clip(mean_rewards - se_rewards, -1 * memory_size, 1)
         upper_bound = np.clip(mean_rewards + se_rewards, -1 * memory_size, 1)
         if smooth == True:
-            mean_rewards = savgol_filter(mean_rewards, 51, 1)
+            mean_rewards = savgol_filter(mean_rewards, 71, 1)
         dataframe = np.vstack((mean_rewards, episodes)).transpose()
         dataframe = pd.DataFrame(data=dataframe, columns=['reward', 'episodes'])
 
