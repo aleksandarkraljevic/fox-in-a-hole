@@ -10,9 +10,12 @@ n_nodes = 12
 # Hyperparameters of the algorithm and other parameters of the program
 learning_rate = [0.01]
 gamma = 1  # discount factor
+steps_per_train = 10 # Per how many game steps a singular batch of model training happens
 initial_exploration = 1  # 100%
 final_exploration = 0.01  # 1%
 num_episodes = 5000
+soft_weight_update = True # False if hard updating
+steps_per_target_update = 5 # This parameter only matters when the weights are being hard updated
 tau = 0.05
 decay_constant = [0.01]  # the amount with which the exploration parameter changes after each episode
 temperature = 0.1
@@ -34,7 +37,7 @@ for lr in learning_rate:
 
             file_name = savename+'-repetition_'+str(rep+1)
 
-            dqn = DQN(file_name, base_model, target_network, n_holes, memory_size, lr, gamma, num_episodes, tau, initial_exploration, final_exploration, dc, temperature, batch_size, min_size_buffer, max_size_buffer, exploration_strategy)
+            dqn = DQN(file_name, base_model, target_network, n_holes, memory_size, lr, gamma, num_episodes, steps_per_train, soft_weight_update, steps_per_target_update, tau, initial_exploration, final_exploration, dc, temperature, batch_size, min_size_buffer, max_size_buffer, exploration_strategy)
 
             dqn.main()
 

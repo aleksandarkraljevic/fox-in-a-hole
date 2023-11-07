@@ -7,7 +7,7 @@ from classic_NN import *
 
 
 class DQN():
-    def __init__(self, savename, base_model, target_network, n_holes, memory_size, learning_rate, gamma, num_episodes, tau, initial_exploration, final_exploration, decay_constant, temperature, batch_size, min_size_buffer, max_size_buffer, exploration_strategy):
+    def __init__(self, savename, base_model, target_network, n_holes, memory_size, learning_rate, gamma, num_episodes, steps_per_train, soft_weight_update, steps_per_target_update, tau, initial_exploration, final_exploration, decay_constant, temperature, batch_size, min_size_buffer, max_size_buffer, exploration_strategy):
         self.savename = savename
         self.n_holes = n_holes
         self.memory_size = memory_size
@@ -16,6 +16,9 @@ class DQN():
         self.target_network = target_network
         self.gamma = gamma
         self.num_episodes = num_episodes
+        self.steps_per_train = steps_per_train
+        self.soft_weight_update = soft_weight_update
+        self.steps_per_target_update = steps_per_target_update
         self.tau = tau
         self.initial_exploration = initial_exploration
         self.final_exploration = final_exploration
@@ -26,25 +29,27 @@ class DQN():
         self.max_size_buffer = max_size_buffer
         self.exploration_strategy = exploration_strategy
 
-    def update_model(self):
+    def soft_update_model(self):
         '''
         Copies weights from base model to target network via a soft-update rule.
         param base_model:       tf base model
         param target_network:   tf target network
         '''
-        for layer_TN, layer_BM in zip(self.target_network.layers, self.base_model.layers):
-            # soft update
-            TN_weights = layer_TN.get_weights()
-            BM_weights = layer_BM.get_weights()
-            new_weights = []
-            new_weights.append((1-self.tau) * TN_weights[0] + self.tau * BM_weights[0])
-            new_weights.append((1 - self.tau) * TN_weights[1] + self.tau * BM_weights[1])
-            layer_TN.set_weights(new_weights)
-            # hard update
-            # layer_TN.set_weights(layer_BM.get_weights())
+        new_weights = []
+        for TN_layer, BM_layer in zip(self.target_network.get_weights(), self.base_model.get_weights()):
+            new_weights.append((1 - self.tau) * TN_layer + self.tau * BM_layer)
+        self.target_network.set_weights(new_weights)
+
+    def hard_update_model(self):
+        '''
+        Copies weights from base model to target network via a hard-update rule.
+        param base_model:       tf base model
+        param target_network:   tf target network
+        '''
+        self.target_network.set_weights(self.base_model.get_weights())
 
     def save_data(self, rewards, episode_lengths):
-        data = {'n_holes': self.n_holes, 'memory_size': self.memory_size, 'batch_size': self.batch_size, 'min_size_buffer': self.min_size_buffer, 'max_size_buffer': self.max_size_buffer, 'rewards': rewards, 'episode_lengths': episode_lengths}
+        data = {'n_holes': self.n_holes, 'rewards': rewards, 'episode_lengths': episode_lengths}
         np.save('data/' + self.savename + '.npy', data)
         self.target_network.save('models/' + self.savename + '.keras')
 
@@ -114,11 +119,11 @@ class DQN():
         episode_rewards = []
         replay_buffer = deque(maxlen=self.max_size_buffer)
         total_steps = 0
-        #hard_update_steps = 0
+        training_steps = 0
         possible_actions = list(range(self.n_holes))
         possible_actions = [x+1 for x in possible_actions]
 
-        self.update_model() # start by copying over the weights from TN to base model to ensure they are identical
+        self.hard_update_model() # start by copying over the weights from TN to base model to ensure they are identical
 
         for episode in tqdm(range(self.num_episodes)):
             done = env.reset()
@@ -154,11 +159,14 @@ class DQN():
                 replay_buffer.append([observation, action, reward, new_observation, done])
                 episode_reward += reward
 
-                if (total_steps % 10 == 0) and (len(replay_buffer) > self.min_size_buffer): # the model is trained after every game, as long as the replay buffer is filled up enough
+                if (total_steps % self.steps_per_train == 0) and (len(replay_buffer) > self.min_size_buffer): # the model is trained after every game, as long as the replay buffer is filled up enough
                     self.train(replay_buffer)
-                    #if hard_update_steps % 5 == 0:
-                    self.update_model()  # copy over the weights only after a certain amount of training steps have been taken if hard update, or every step if soft update
-                    #hard_update_steps += 1
+                    training_steps += 1
+
+                if self.soft_weight_update:
+                    self.soft_update_model()  # copy over part of the weights at each step (soft update)
+                elif training_steps % self.steps_per_target_update == 0: # copy over the weights only after a certain amount of training steps have been taken (hard update)
+                    self.hard_update_model()
 
                 # roll over
                 observation = new_observation
@@ -181,6 +189,9 @@ def main():
     # Hyperparameters of the algorithm and other parameters of the program
     learning_rate = 0.01
     gamma = 1  # discount factor
+    steps_per_train = 10 # Per how many game steps a singular batch of model training happens
+    soft_weight_update = False # False if hard updating
+    steps_per_target_update = 5 # This parameter only matters when the weights are being hard updated
     tau = 0.05 # TN soft-update speed parameter, tau is the ratio of the TN that gets copied over at each training step
     initial_exploration = 1  # 100%
     final_exploration = 0.01  # 1%
@@ -199,7 +210,7 @@ def main():
     base_model = classical_model.initialize_model()
     target_network = classical_model.initialize_model()
 
-    dqn = DQN(savename, base_model, target_network, n_holes, memory_size, learning_rate, gamma, num_episodes, tau, initial_exploration, final_exploration, decay_constant, temperature, batch_size, min_size_buffer, max_size_buffer, exploration_strategy)
+    dqn = DQN(savename, base_model, target_network, n_holes, memory_size, learning_rate, gamma, num_episodes, steps_per_train, soft_weight_update, steps_per_target_update, tau, initial_exploration, final_exploration, decay_constant, temperature, batch_size, min_size_buffer, max_size_buffer, exploration_strategy)
 
     dqn.main()
 

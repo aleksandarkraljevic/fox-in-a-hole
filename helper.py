@@ -47,7 +47,8 @@ def plot(data_name, show, savename, smooth):
 def plot_averaged(data_names, show, savename, smooth):
     n_names = len(data_names)
     data = np.load('data/'+data_names[0]+'.npy', allow_pickle=True)
-    memory_size = data.item().get('memory_size')
+    n_holes = data.item().get('n_holes')
+    memory_size = 2 * (n_holes - 2)
     rewards = data.item().get('rewards')
     episodes = np.arange(1, len(rewards) + 1)
     for i in range(n_names-1):
@@ -80,7 +81,8 @@ def compare_models(parameter_names, repetitions, show, savename, label_names, sm
 
     for experiment in range(len(parameter_names)):
         data = np.load('data/'+parameter_names[experiment]+'-repetition_1.npy', allow_pickle=True)
-        memory_size = data.item().get('memory_size')
+        n_holes = data.item().get('n_holes')
+        memory_size = 2*(n_holes-2)
         rewards = data.item().get('rewards')
         episodes = np.arange(1, len(rewards) + 1)
         for i in range(repetitions-1):
@@ -109,7 +111,7 @@ def evaluate(model_name, n_samples, print_strategy, print_evaluation):
     model = tf.keras.models.load_model('models/'+model_name+'.keras')
     data = np.load('data/'+model_name+'.npy', allow_pickle=True)
     n_holes = data.item().get('n_holes')
-    memory_size = data.item().get('memory_size')
+    memory_size = 2*(n_holes-2)
     env = FoxInAHole(n_holes, memory_size)
     episode_lengths = []
     episode_rewards = []
