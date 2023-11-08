@@ -185,6 +185,7 @@ def main():
     n_holes = 5
     memory_size = 2*(n_holes-2)
     # model parameters
+    hidden_layers = 2
     n_nodes = 12
     # Hyperparameters of the algorithm and other parameters of the program
     learning_rate = 0.01
@@ -206,7 +207,7 @@ def main():
 
     start = time.time()
 
-    classical_model = ClassicalModel(n_holes=n_holes, memory_size=memory_size, n_nodes=n_nodes, learning_rate=learning_rate)
+    classical_model = ClassicalModel(n_holes=n_holes, memory_size=memory_size, hidden_layers=hidden_layers, n_nodes=n_nodes, learning_rate=learning_rate)
     base_model = classical_model.initialize_model()
     target_network = classical_model.initialize_model()
 
