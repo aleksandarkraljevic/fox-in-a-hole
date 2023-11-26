@@ -70,7 +70,7 @@ def plot_averaged(data_names, show, savename, smooth):
     plt.figure()
     sns.set_theme()
     sns.lineplot(data=dataframe, x='episodes', y='reward')
-    plt.fill_between(episodes, lower_bound, upper_bound, color='b', alpha=0.2)
+    plt.fill_between(episodes, lower_bound, upper_bound, color='blue', alpha=0.1)
     plt.ylim(-1 * memory_size, 0)
     plt.title('Mean reward per episode')
     if savename != False:
@@ -79,6 +79,7 @@ def plot_averaged(data_names, show, savename, smooth):
         plt.show()
 
 def compare_models(parameter_names, repetitions, show, savename, label_names, smooth):
+    colors_list = ['blue', 'orange', 'green', 'red', 'purple', 'brown']
     # this function requires the user to put all the experiment data in the data folder
     plt.figure()
     sns.set_theme()
@@ -103,7 +104,7 @@ def compare_models(parameter_names, repetitions, show, savename, label_names, sm
         dataframe = pd.DataFrame(data=dataframe, columns=['reward', 'episodes'])
 
         sns.lineplot(data=dataframe, x='episodes', y='reward', label=label_names[experiment])
-        plt.fill_between(episodes, lower_bound, upper_bound, alpha=0.3)
+        plt.fill_between(episodes, lower_bound, upper_bound, color=colors_list[experiment], alpha=0.1)
         plt.ylim(-1 * memory_size, 0)
 
     plt.title('Mean reward per episode')
