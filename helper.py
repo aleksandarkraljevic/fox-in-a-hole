@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 import tensorflow as tf
 import seaborn as sns
 import pandas as pd
@@ -36,10 +37,10 @@ def plot(data_name, show, savename, smooth):
         rewards = savgol_filter(rewards, 71, 1)
     episodes = np.arange(1, len(rewards) + 1)
     dataframe = np.vstack((rewards, episodes)).transpose()
-    dataframe = pd.DataFrame(data=dataframe, columns=['reward', 'episodes'])
+    dataframe = pd.DataFrame(data=dataframe, columns=['Reward', 'Episode'])
     plt.figure()
     sns.set_theme()
-    sns.lineplot(data=dataframe, x='episodes', y='reward')
+    sns.lineplot(data=dataframe, x='Episode', y='Reward')
     plt.ylim(-1 * memory_size, 0)
     plt.title('Reward per episode')
     if savename != False:
@@ -65,11 +66,11 @@ def plot_averaged(data_names, show, savename, smooth):
     if smooth == True:
         mean_rewards = savgol_filter(mean_rewards, 71, 1)
     dataframe = np.vstack((mean_rewards, episodes)).transpose()
-    dataframe = pd.DataFrame(data=dataframe, columns=['reward', 'episodes'])
+    dataframe = pd.DataFrame(data=dataframe, columns=['Reward', 'Episode'])
 
     plt.figure()
     sns.set_theme()
-    sns.lineplot(data=dataframe, x='episodes', y='reward')
+    sns.lineplot(data=dataframe, x='Episode', y='Reward')
     plt.fill_between(episodes, lower_bound, upper_bound, color='blue', alpha=0.1)
     plt.ylim(-1 * memory_size, 0)
     plt.title('Mean reward per episode')
@@ -101,9 +102,9 @@ def compare_models(parameter_names, repetitions, show, savename, label_names, sm
         if smooth == True:
             mean_rewards = savgol_filter(mean_rewards, 71, 1)
         dataframe = np.vstack((mean_rewards, episodes)).transpose()
-        dataframe = pd.DataFrame(data=dataframe, columns=['reward', 'episodes'])
+        dataframe = pd.DataFrame(data=dataframe, columns=['Reward', 'Episode'])
 
-        sns.lineplot(data=dataframe, x='episodes', y='reward', label=label_names[experiment])
+        sns.lineplot(data=dataframe, x='Episode', y='Reward', label=label_names[experiment])
         plt.fill_between(episodes, lower_bound, upper_bound, color=colors_list[experiment], alpha=0.1)
         plt.ylim(-1 * memory_size, 0)
 
@@ -113,7 +114,7 @@ def compare_models(parameter_names, repetitions, show, savename, label_names, sm
     if show:
         plt.show()
 
-def evaluate(model_name, n_samples, print_strategy, print_evaluation):
+def evaluate(model_name, n_samples, print_strategy, print_evaluation, plot_distribution, save):
     model = tf.keras.models.load_model('models/'+model_name+'.keras')
     data = np.load('data/'+model_name+'.npy', allow_pickle=True)
     n_holes = data.item().get('n_holes')
@@ -128,7 +129,7 @@ def evaluate(model_name, n_samples, print_strategy, print_evaluation):
             predicted_q_values = model(np.asarray(observation).reshape(1, memory_size))
             action = np.argmax(predicted_q_values) + 1
             observation.append(action)
-        print(observation)
+        print("The strategy for the first 2(n-2) guesses =", list(observation))
     for sample in range(n_samples):
         current_episode_length = 0
         episode_reward = 0
@@ -150,5 +151,15 @@ def evaluate(model_name, n_samples, print_strategy, print_evaluation):
     if print_evaluation:
         print('The average amount of guesses needed to finish the game is: ',round(np.mean(episode_lengths),2))
         print('The average reward per game after '+str(n_samples)+' games is: ',round(np.mean(episode_rewards),2))
+
+    if plot_distribution:
+        episode_rewards = [x*(-1)+1 for x in episode_rewards]
+        episode_rewards = pd.DataFrame(episode_rewards, columns=["# guesses"])
+        plt.figure()
+        sns.histplot(episode_rewards, x="# guesses")
+        plt.title("Distribution of the guess count")
+        if save:
+            plt.savefig('plots/' + model_name + '-distribution.png')
+        plt.show()
 
     return np.mean(episode_lengths)

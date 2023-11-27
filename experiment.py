@@ -1,4 +1,4 @@
-from dqn import *
+from classical_model import *
 
 # amount of repetitions that will be averaged over for the experiment
 repetitions = 3

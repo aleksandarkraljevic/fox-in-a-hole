@@ -3,7 +3,7 @@ import time
 import random
 
 from helper import *
-from classic_NN import *
+from dnn import *
 
 
 class DQN():
