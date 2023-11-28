@@ -149,8 +149,8 @@ def evaluate(model_name, n_samples, print_strategy, print_evaluation, plot_distr
         episode_rewards.append(episode_reward)
 
     if print_evaluation:
-        print('The average amount of guesses needed to finish the game is: ',round(np.mean(episode_lengths),2))
-        print('The average reward per game after '+str(n_samples)+' games is: ',round(np.mean(episode_rewards),2))
+        print('The average amount of guesses needed to finish the game is:', round(np.mean(episode_lengths),2), '+-', round(np.std(episode_lengths)/np.sqrt(n_samples),2))
+        print('The average reward per game is:', round(np.mean(episode_rewards),2), '+-', round(np.std(episode_rewards)/np.sqrt(n_samples),2))
 
     if plot_distribution:
         episode_rewards = [x*(-1)+1 for x in episode_rewards]
