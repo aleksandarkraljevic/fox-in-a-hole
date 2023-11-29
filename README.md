@@ -1,4 +1,4 @@
-# Classical fox in a hole reinforcement learning model by Aleksandar Kraljevic
+# Classical fox in a hole reinforcement learning model, by Aleksandar Kraljevic
 
 The code consists of seven .py files, and one .slurm file:
 - classical_model.py:
