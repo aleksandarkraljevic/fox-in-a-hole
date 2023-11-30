@@ -77,7 +77,7 @@ class DDQN():
 
     def soft_update_model(self):
         '''
-        Copies weights from the base model/network to the target model/network via a soft-update rule.
+        Copies weights from the base network to the target network via a soft-update rule.
         '''
         new_weights = []
         for TN_layer, BM_layer in zip(self.target_network.get_weights(), self.base_model.get_weights()):
@@ -86,7 +86,7 @@ class DDQN():
 
     def hard_update_model(self):
         '''
-        Copies weights from the base model/network to the target model/network via a hard-update rule.
+        Copies weights from the base network to the target network via a hard-update rule.
         '''
         self.target_network.set_weights(self.base_model.get_weights())
 

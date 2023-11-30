@@ -33,8 +33,6 @@ def boltzmann_exploration(actions, temperature):
     ----------
     actions (list):
         Vector with possible actions.
-    start (float):
-        Initial epsilon value.
     temperature (float):
         Strength of the exploration.
     '''
