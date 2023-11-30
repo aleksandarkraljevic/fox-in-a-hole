@@ -37,9 +37,9 @@ for rep in range(repetitions):
 
     file_name = savename+'-repetition_'+str(rep+1)
 
-    dqn = DQN(file_name, base_model, target_network, n_holes, memory_size, learning_rate, gamma, num_episodes, steps_per_train, soft_weight_update, steps_per_target_update, tau, initial_exploration, final_exploration, dc, temperature, batch_size, min_size_buffer, max_size_buffer, exploration_strategy)
+    ddqn = DDQN(file_name, base_model, target_network, n_holes, memory_size, learning_rate, gamma, num_episodes, steps_per_train, soft_weight_update, steps_per_target_update, tau, initial_exploration, final_exploration, decay_constant, temperature, batch_size, min_size_buffer, max_size_buffer, exploration_strategy)
 
-    dqn.main()
+    ddqn.main()
 
     data_names.append(file_name)
 

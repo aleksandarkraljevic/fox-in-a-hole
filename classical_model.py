@@ -6,8 +6,54 @@ from helper import *
 from dnn import *
 
 
-class DQN():
+class DDQN():
     def __init__(self, savename, base_model, target_network, n_holes, memory_size, learning_rate, gamma, num_episodes, steps_per_train, soft_weight_update, steps_per_target_update, tau, initial_exploration, final_exploration, decay_constant, temperature, batch_size, min_size_buffer, max_size_buffer, exploration_strategy):
+        '''
+        Initializes the DDQN parameters.
+
+        Parameters
+        ----------
+        savename (str):
+            The name with which the file model and data files will be saved.
+        base_model (tensorflow keras model):
+            The base network.
+        target_model (tensorflow keras model):
+            The target network.
+        n_holes (int):
+            Number of outputs of the DNN. / Number of holes in the environment.
+        memory_size (int):
+            The size of the input to the DNN. / The amount of guesses that the agent is allowed to look back.
+        learning_rate (float):
+            The learning rate that the optimizer of the DNN uses in order to update the weights.
+        gamma (float):
+            The discount factor that is used in the Q-learning algorithm.
+        num_episodes (int):
+            The amount of total episodes that the model will train for.
+        steps_per_train (int):
+            The amount of time steps that pass in between each training step.
+        soft_weight_update (boolean):
+            Whether the target network will be updated via soft-updating. If False, then it will be hard-updating.
+        steps_per_target_update (int):
+            Per how many training steps the target network will update, if it is hard-updating.
+        tau (float):
+            The fraction with which the base network copies over to the target network after each training step.
+        initial_exploration (float):
+            The starting value of epsilon in the case that annealing epsilon-greedy is used.
+        final_exploration (float):
+            The lowest value of epsilon in the case that annealing epsilon-greedy is used.
+        decay_constant (float):
+            How fast epsilon decays in the case that annealing epsilon-greedy is used.
+        temperature (float):
+            The strength with which exploration finds place in the case that the Boltzmann policy is used.
+        batch_size (int):
+            The amount of samples that each training batch consists of.
+        min_size_buffer (int):
+            The minimum size that the experience replay buffer needs to be before training may start.
+        max_size_buffer (int):
+            The maximum size that the experience replay buffer is allowed to be. If this limit is reached then the oldest samples start being replaced with the newest samples.
+        exploration_strategy (str):
+            What exploration strategy should be followed during the training of the model. Either "egreedy" or "boltzmann".
+        '''
         self.savename = savename
         self.n_holes = n_holes
         self.memory_size = memory_size
@@ -31,9 +77,7 @@ class DQN():
 
     def soft_update_model(self):
         '''
-        Copies weights from base model to target network via a soft-update rule.
-        param base_model:       tf base model
-        param target_network:   tf target network
+        Copies weights from the base model/network to the target model/network via a soft-update rule.
         '''
         new_weights = []
         for TN_layer, BM_layer in zip(self.target_network.get_weights(), self.base_model.get_weights()):
@@ -42,18 +86,38 @@ class DQN():
 
     def hard_update_model(self):
         '''
-        Copies weights from base model to target network via a hard-update rule.
-        param base_model:       tf base model
-        param target_network:   tf target network
+        Copies weights from the base model/network to the target model/network via a hard-update rule.
         '''
         self.target_network.set_weights(self.base_model.get_weights())
 
     def save_data(self, rewards, episode_lengths):
+        '''
+        Saves the model after its training, as well as important results and properties.
+
+        Parameters
+        ----------
+        rewards (list):
+            A list of all the rewards that were obtained at the end of each episode.
+        episode_lengths (list):
+            A list of the length of each episode.
+        '''
         data = {'n_holes': self.n_holes, 'rewards': rewards, 'episode_lengths': episode_lengths}
         np.save('data/' + self.savename + '.npy', data)
         self.target_network.save('models/' + self.savename + '.keras')
 
     def custom_predict(self, observations, model, batch_size):
+        '''
+        A custom keras model predict function that can predict a batch of samples.
+
+        Parameters
+        ----------
+        observations (array):
+            An array containing each sample's action, state, next state, reward, and whether it finished the game or not.
+        model (tensorflow keras model):
+            The model that is used to make predictions with.
+        batch_size (int):
+            The amount of samples that each training batch consists of.
+        '''
         predicted_q_values = []
         for observation in observations:
             predicted_q_values.append(model(np.asarray(observation).reshape(1,self.memory_size)))
@@ -61,17 +125,12 @@ class DQN():
 
     def train(self, replay_buffer):
         '''
-        Trains the model using the DQN algorithm.
-        The Replay Experience buffer (if enabled) is used to indicate which states we want to train the model on.
-        Otherwise, we use the last state observed in the list.
-        Then, it predicts the new Q-values with the use of the Target Network (if enabled).
-        Finally it fits the model (using a batch size if Replay Experience buffer is enabled).
-        param base_model:       the constructed Model
-        param target_network:   Target Network
-        param replay_buffer:    Experience Replay buffer for storing states.
-        param activate_ER:      True of False whether an Experience Replay Buffer is used
-        param activate_TN:      True of False whether a Target Network is used
-        param learning_rate:    learning rate hyperparameter
+        Trains the DDQN model.
+
+        Parameters
+        ----------
+        replay_buffer (array):
+            An array containing all the samples that can be used to train with.
         '''
 
         sample_list = random.sample(range(0, len(replay_buffer)), self.batch_size)
@@ -102,18 +161,10 @@ class DQN():
 
     def main(self):
         '''
-        For all the episodes, the agent selects an action (based on the given policy) and then trains the model.
-        Experience Replacy and Target Network are used if they were specified when this function was called.
-        same parameters as the train function: base_model, target_network, learning_rate, activate_TN, activate_ER
-        param num_episodes:             integet number specifying the number of episodes
-        param initial_exploration:      upper limit of epsilon value for annealing epsilon greedy
-        param final_exploration:        lower limit of epsilon value for annealing epsilon greedy
-        param decay_constant:           decreasing value for annealing epsilon greedy
-        param temperature:              key parameter of boltzmann's policy
-        param exploration_strategy:     by default is set to 'egreedy' but 'boltzmann' is also a valid option
+        Handles the main bulk of the DDQN algorithm, making use of all the other functions in this class.
         '''
 
-        env = FoxInAHole(self.n_holes, self.memory_size)
+        env = FoxInAHole(self.n_holes)
 
         episode_lengths = []
         episode_rewards = []
@@ -179,19 +230,22 @@ class DQN():
             self.save_data(episode_rewards, episode_lengths)
 
 def main():
+    '''
+    Initializes all the hyperparameters, creates the base and target network by calling upon dnn.py, and trains and saves the model by calling upon the DQN() class.
+    '''
     # name that will be used to save both the model and all its data with
     savename = 'test'
     # game parameters
     n_holes = 5
     memory_size = 2*(n_holes-2)
-    # model parameters
+    # model hyperparameters
     hidden_layers = 2
     n_nodes = 12
-    # Hyperparameters of the algorithm and other parameters of the program
+    # hyperparameters of the algorithm and other parameters of the program
     learning_rate = 0.01
     gamma = 1  # discount factor
-    steps_per_train = 10 # Per how many game steps a singular batch of model training happens
-    soft_weight_update = False # False if hard updating
+    steps_per_train = 5 # Per how many game steps a singular batch of model training happens
+    soft_weight_update = True # False if hard updating
     steps_per_target_update = 5 # This parameter only matters when the weights are being hard updated
     tau = 0.05 # TN soft-update speed parameter, tau is the ratio of the TN that gets copied over at each training step
     initial_exploration = 1  # 100%
@@ -202,8 +256,8 @@ def main():
     batch_size = 64
     min_size_buffer = 1000
     max_size_buffer = 10000
-    exploration_strategy = 'egreedy'
-    #exploration_strategy = 'boltzmann'
+    #exploration_strategy = 'egreedy'
+    exploration_strategy = 'boltzmann'
 
     start = time.time()
 
@@ -211,9 +265,9 @@ def main():
     base_model = classical_model.initialize_model()
     target_network = classical_model.initialize_model()
 
-    dqn = DQN(savename, base_model, target_network, n_holes, memory_size, learning_rate, gamma, num_episodes, steps_per_train, soft_weight_update, steps_per_target_update, tau, initial_exploration, final_exploration, decay_constant, temperature, batch_size, min_size_buffer, max_size_buffer, exploration_strategy)
+    ddqn = DDQN(savename, base_model, target_network, n_holes, memory_size, learning_rate, gamma, num_episodes, steps_per_train, soft_weight_update, steps_per_target_update, tau, initial_exploration, final_exploration, decay_constant, temperature, batch_size, min_size_buffer, max_size_buffer, exploration_strategy)
 
-    dqn.main()
+    ddqn.main()
 
     end = time.time()
 

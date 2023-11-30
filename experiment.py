@@ -1,9 +1,9 @@
 from classical_model import *
 
 # amount of repetitions that will be averaged over for the experiment
-repetitions = 3
+repetitions = 20
 # game parameters
-n_holes = 9
+n_holes = 5
 memory_size = 2*(n_holes-2)
 # neural network parameters
 hidden_layers = 2
@@ -39,14 +39,14 @@ for rep in range(repetitions):
 
     file_name = savename+'-repetition_'+str(rep+1+17)
 
-    dqn = DQN(file_name, base_model, target_network, n_holes, memory_size, learning_rate, gamma, num_episodes, steps_per_train, soft_weight_update, steps_per_target_update, tau, initial_exploration, final_exploration, decay_constant, temperature, batch_size, min_size_buffer, max_size_buffer, exploration_strategy)
+    ddqn = DDQN(file_name, base_model, target_network, n_holes, memory_size, learning_rate, gamma, num_episodes, steps_per_train, soft_weight_update, steps_per_target_update, tau, initial_exploration, final_exploration, decay_constant, temperature, batch_size, min_size_buffer, max_size_buffer, exploration_strategy)
 
-    dqn.main()
+    ddqn.main()
 
     data_names.append(file_name)
 
-#plot_averaged(data_names=data_names, show=False, savename=savename, smooth=False)
-#plot_averaged(data_names=data_names, show=False, savename=savename+'-smooth', smooth=True)
+plot_averaged(data_names=data_names, show=False, savename=savename, smooth=False)
+plot_averaged(data_names=data_names, show=False, savename=savename+'-smooth', smooth=True)
 
 data_names = []
 
